@@ -1,12 +1,17 @@
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import Register from './Components/Register'
 import './App.css'
-import Kutu from './Kutu'
 
 function App() {
+  
 
   return (
     <>
-    <Kutu />
+    <Register/>
     </>
+    
   )
 }
 
