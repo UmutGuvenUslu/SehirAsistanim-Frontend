@@ -1,15 +1,15 @@
 import React from "react";
 import { Link,Links } from "react-router-dom";
-import foto from "./foto.jpg";
+import photo from "./photo.jpg";
 
 export default function Login() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı */}
-      <div className="hidden md:flex md:w-1/2 bg-purple-800 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-slate-500 to-zinc-900 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
         <div className="max-w-md text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            Şehir Asistanım CBS Yardım Sistemi
+            Şehir Asistanım
           </h1>
           <p className="text-gray-300 ">
             Sisteme giriş yaparak şehrinizdeki sorunları takip edebilir, bildirimlerinizi
@@ -17,7 +17,7 @@ export default function Login() {
           </p>
         </div>
         <img
-          src={foto}
+          src={photo}
           alt="ŞehirAsistanım Görseli"
           className="w-full max-w-xl rounded-xl shadow-lg "
         />
@@ -63,7 +63,7 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition"
+              className="w-full bg-black text-white py-2 rounded hover:bg-gray-700 transition"
             >
               Giriş Yap
             </button>
