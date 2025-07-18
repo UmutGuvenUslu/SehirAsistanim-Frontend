@@ -7,7 +7,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    EmailOrTC: "",
+    Email: "",
     Sifre: ""
   });
 
@@ -24,17 +24,19 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await axios.post("https://sehirasistanim-backend-production.up.railway.app/api/auth/login", {
-        Email: form.EmailOrTC,
-        Password: form.Sifre,
-      });
+      const response = await axios.post(
+        "https://sehirasistanim-backend-production.up.railway.app/api/auth/login",
+        {
+          Email: form.Email,
+          Sifre: form.Sifre,
+        }
+      );
 
       localStorage.setItem("token", response.data.token);
 
-      alert("Giriş başarılı! Hoşgeldiniz " + response.data.fullName);
+      alert("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
 
       navigate("/");
-
     } catch (err) {
       setError(err.response?.data?.message || "Giriş sırasında hata oluştu.");
     } finally {
@@ -45,12 +47,12 @@ export default function Login() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı */}
-      <div className="hidden md:flex md:w-1/2 bg-purple-800  text-white flex-col justify-center items-center px-10 py-12 space-y-6">
+      <div className="hidden md:flex md:w-1/2 bg-purple-800 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
         <div className="max-w-md text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
             Şehir Asistanım CBS Yardım Sistemi
           </h1>
-          <p className="text-gray-300 ">
+          <p className="text-gray-300">
             Sisteme giriş yaparak şehrinizdeki sorunları takip edebilir, bildirimlerinizi
             yönetebilirsiniz. Giriş yap, katkı sağla!
           </p>
@@ -58,7 +60,7 @@ export default function Login() {
         <img
           src={photo}
           alt="ŞehirAsistanım Görseli"
-          className="w-full max-w-md rounded-xl shadow-lg "
+          className="w-full max-w-md rounded-xl shadow-lg"
         />
       </div>
 
@@ -72,12 +74,12 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
-              type="text"
-              name="EmailOrTC"
-              placeholder="Email adresiniz veya TC Kimlik No"
+              type="email"
+              name="Email"
+              placeholder="Email adresiniz"
               className="w-full border border-gray-300 rounded px-3 py-2"
               required
-              value={form.EmailOrTC}
+              value={form.Email}
               onChange={handleChange}
             />
 
@@ -105,7 +107,9 @@ export default function Login() {
 
             <button
               type="submit"
-              className={`w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               disabled={loading}
             >
               {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
