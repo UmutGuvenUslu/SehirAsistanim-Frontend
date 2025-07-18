@@ -56,10 +56,8 @@ export default function Register() {
         </div>
         <img src={photo} alt="ŞehirAsistanım" className="w-full max-w-md rounded-xl shadow-lg" />
         <div className="flex justify-center space-x-3 mt-6">
-          <img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" />
-          <img src="https://cdn.simpleicons.org/tailwindcss" alt="tailwind" className="w-6 h-6" />
-          <img src="https://cdn.simpleicons.org/react" alt="react" className="w-6 h-6" />
-          <img src="https://cdn.simpleicons.org/nextdotjs" alt="next" className="w-6 h-6" />
+          {/*<img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" />*/}
+        
         </div>
       </div>
 
