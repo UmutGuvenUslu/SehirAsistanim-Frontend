@@ -7,8 +7,8 @@ export default function Login() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    Email: "",
-    Sifre: ""
+    email: "",
+    password: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -27,18 +27,29 @@ export default function Login() {
       const response = await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/login",
         {
-          Email: form.Email,
-          Sifre: form.Sifre,
+          email: form.email,
+          password: form.password,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json"
+          }
         }
       );
 
-      localStorage.setItem("token", response.data.token);
-
-      alert("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
-
-      navigate("/");
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        alert("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
+        navigate("/");
+      } else {
+        setError("Giriş başarısız: Token alınamadı.");
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Giriş sırasında hata oluştu.");
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "Giriş sırasında hata oluştu.");
+      } else {
+        setError("Bilinmeyen bir hata oluştu.");
+      }
     } finally {
       setLoading(false);
     }
@@ -75,21 +86,21 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="email"
-              name="Email"
+              name="email"
               placeholder="Email adresiniz"
               className="w-full border border-gray-300 rounded px-3 py-2"
               required
-              value={form.Email}
+              value={form.email}
               onChange={handleChange}
             />
 
             <input
               type="password"
-              name="Sifre"
+              name="password"
               placeholder="Şifreniz"
               className="w-full border border-gray-300 rounded px-3 py-2"
               required
-              value={form.Sifre}
+              value={form.password}
               onChange={handleChange}
             />
 
