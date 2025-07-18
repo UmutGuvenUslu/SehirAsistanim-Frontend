@@ -1,8 +1,47 @@
-import React from "react";
-import { Link,Links } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import photo from "./photo.jpg";
+import axios from "axios";
 
 export default function Login() {
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    EmailOrTC: "",
+    Sifre: ""
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await axios.post("https://localhost:7272/api/auth/login", {
+        Email: form.EmailOrTC,
+        Password: form.Sifre,
+      });
+
+      localStorage.setItem("token", response.data.token);
+
+      alert("Giriş başarılı! Hoşgeldiniz " + response.data.fullName);
+
+      navigate("/");
+
+    } catch (err) {
+      setError(err.response?.data?.message || "Giriş sırasında hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı */}
@@ -21,9 +60,6 @@ export default function Login() {
           alt="ŞehirAsistanım Görseli"
           className="w-full max-w-md rounded-xl shadow-lg "
         />
-        <div className="flex justify-center space-x-3 mt-6 ">
-          {/* <img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" /> */}
-        </div>
       </div>
 
       {/* Sağ form alanı */}
@@ -34,13 +70,15 @@ export default function Login() {
             Şehir Asistanım hesabına giriş yaparak sistemin tüm özelliklerinden yararlanabilirsin.
           </p>
 
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="text"
               name="EmailOrTC"
-              placeholder="Email adresiniz"
+              placeholder="Email adresiniz veya TC Kimlik No"
               className="w-full border border-gray-300 rounded px-3 py-2"
               required
+              value={form.EmailOrTC}
+              onChange={handleChange}
             />
 
             <input
@@ -49,6 +87,8 @@ export default function Login() {
               placeholder="Şifreniz"
               className="w-full border border-gray-300 rounded px-3 py-2"
               required
+              value={form.Sifre}
+              onChange={handleChange}
             />
 
             <div className="flex items-center justify-between text-sm">
@@ -61,11 +101,14 @@ export default function Login() {
               </a>
             </div>
 
+            {error && <p className="text-red-600 text-center">{error}</p>}
+
             <button
               type="submit"
-              className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition"
+              className={`w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={loading}
             >
-              Giriş Yap
+              {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
           </form>
 
@@ -80,4 +123,3 @@ export default function Login() {
     </div>
   );
 }
-
