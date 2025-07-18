@@ -18,9 +18,8 @@ const SikayetlerimMap = () => {
                 ],
                 view: new View({
                     center: fromLonLat([35.0, 39.0]), // Türkiye merkezi
-                    zoom: 5,
-                    minZoom: 5,
-                    maxZoom: 5,
+                    zoom: 7,
+
                 }),
                 interactions: [], // hareket kısıtlamaları (scroll zoom vs. yok)
             });
