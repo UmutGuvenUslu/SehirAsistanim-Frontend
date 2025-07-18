@@ -1,15 +1,15 @@
 import React from "react";
 import { Link,Links } from "react-router-dom";
-import photo from "./photo.jpg"; // buraya kendi görselini koymayı unutma
+import foto from "./foto.jpg"; // buraya kendi görselini koymayı unutma
 
 export default function Register() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı - sadece md ve üstü ekranlarda görünür */}
-<div className="hidden md:flex md:w-1/2 bg-black text-white flex-col justify-center items-center px-10 py-12 space-y-6">
+  <div className="hidden md:flex md:w-1/2 bg-purple-800 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
   <div className="max-w-md text-center">
     <h1 className="text-3xl md:text-4xl font-bold mb-4">
-      ŞehirAsistanım CBS Yardım Sistemi’ne Hoş Geldiniz!
+      Şehir Asistanım CBS Yardım Sistemi’ne Hoş Geldiniz!
     </h1>
     <p className="text-gray-300">
       Vatandaş odaklı Coğrafi Bilgi Sistemi desteğiyle şehirdeki sorunları kolayca bildirebilir,
@@ -18,17 +18,14 @@ export default function Register() {
   </div>
 
   <img
-    src={photo}
+    src={foto}
     alt="ŞehirAsistanım Görseli"
-    className="w-full max-w-md rounded-xl shadow-lg"
+    className="w-full max-w-xl rounded-xl shadow-lg"
   />
-
+  {/* Buse */}
   {/* Alt ikonlar (isteğe bağlı) */}
   <div className="flex justify-center space-x-3 mt-6">
-    <img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" />
-    <img src="https://cdn.simpleicons.org/tailwindcss" alt="tailwind" className="w-6 h-6" />
-    <img src="https://cdn.simpleicons.org/react" alt="react" className="w-6 h-6" />
-    <img src="https://cdn.simpleicons.org/nextdotjs" alt="next" className="w-6 h-6" />
+    {/*<img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" />*/}
   </div>
 </div>
 
@@ -122,7 +119,7 @@ export default function Register() {
     required
   />
 
-  <div className="flex items-center justify-between text-sm">
+  {/* <div className="flex items-center justify-between text-sm">
     <label className="flex items-center space-x-2">
       <input type="checkbox" className="form-checkbox" />
       <span>Beni Hatırla</span>
@@ -130,7 +127,7 @@ export default function Register() {
     <a href="#" className="text-purple-600 hover:underline">
       Şifremi Unuttum?
     </a>
-  </div>
+  </div> */}
 
   <button
     type="submit"

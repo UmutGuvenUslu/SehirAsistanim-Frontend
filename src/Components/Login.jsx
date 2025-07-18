@@ -1,25 +1,25 @@
 import React from "react";
 import { Link,Links } from "react-router-dom";
-import photo from "./photo.jpg";
+import foto from "./foto.jpg";
 
 export default function Login() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı */}
-      <div className="hidden md:flex md:w-1/2 bg-purple-800  text-white flex-col justify-center items-center px-10 py-12 space-y-6">
+      <div className="hidden md:flex md:w-1/2 bg-purple-800 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
         <div className="max-w-md text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
             Şehir Asistanım CBS Yardım Sistemi
           </h1>
           <p className="text-gray-300 ">
             Sisteme giriş yaparak şehrinizdeki sorunları takip edebilir, bildirimlerinizi
-            yönetebilirsiniz. Giriş yap, katkı sağla!
+            yönetebilirsiniz. Giriş yap ve şehrinin gelişmesine katkı sağla!
           </p>
         </div>
         <img
-          src={photo}
+          src={foto}
           alt="ŞehirAsistanım Görseli"
-          className="w-full max-w-md rounded-xl shadow-lg "
+          className="w-full max-w-xl rounded-xl shadow-lg "
         />
         <div className="flex justify-center space-x-3 mt-6 ">
           {/* <img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" /> */}
