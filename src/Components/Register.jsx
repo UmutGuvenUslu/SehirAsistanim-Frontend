@@ -1,4 +1,5 @@
 import React from "react";
+import { Link,Links } from "react-router-dom";
 import photo from "./photo.jpg"; // buraya kendi görselini koymayı unutma
 
 export default function Register() {
@@ -141,10 +142,10 @@ export default function Register() {
 
 
     <p className="text-sm text-center mt-6">
-      Don’t have an account yet?{" "}
-      <a href="#" className="text-purple-600 hover:underline">
-        Sign Up
-      </a>
+      Zaten bir hesabınız var mı ?{" "}
+      <Link to="/girisyap" href="#" className="text-purple-600 hover:underline">
+        Giriş Yap
+      </Link>
     </p>
   </div>
 </div>
