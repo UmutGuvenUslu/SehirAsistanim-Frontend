@@ -140,7 +140,7 @@ export default function Register() {
 
     <p className="text-sm text-center mt-6">
       Zaten bir hesabınız var mı ?{" "}
-      <Link to="/girisyap" href="#" className="text-purple-600 hover:underline">
+      <Link to="/girisyap" href="#" className="text-orange-500 hover:underline">
         Giriş Yap
       </Link>
     </p>

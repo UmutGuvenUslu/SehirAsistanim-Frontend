@@ -53,10 +53,10 @@ export default function Login() {
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="form-checkbox" />
+                <input type="checkbox" className="form-checkbox accent-orange-500" />
                 <span>Beni hatırla</span>
               </label>
-              <a href="#" className="text-purple-600 hover:underline">
+              <a href="#" className="text-orange-500 hover:underline">
                 Şifremi unuttum?
               </a>
             </div>
@@ -71,7 +71,7 @@ export default function Login() {
 
           <p className="text-sm text-center mt-6">
             Hesabın yok mu?{" "}
-            <Link to="/kayitol" className="text-purple-600 hover:underline">
+            <Link to="/kayitol" className="text-orange-500 hover:underline">
               Kayıt Ol
             </Link>
           </p>
