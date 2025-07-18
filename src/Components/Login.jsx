@@ -24,7 +24,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await axios.post("https://localhost:7272/api/auth/login", {
+      const response = await axios.post("https://sehirasistanim-backend-production.up.railway.app/api/auth/login", {
         Email: form.EmailOrTC,
         Password: form.Sifre,
       });

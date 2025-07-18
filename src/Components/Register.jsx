@@ -19,7 +19,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("https://localhost:7272/api/auth/send-verification-code", null, {
+      await axios.post("https://sehirasistanim-backend-production.up.railway.app/api/auth/send-verification-code", null, {
         params: { email: form.Email }
       });
       setShowModal(true);
@@ -30,7 +30,7 @@ export default function Register() {
 
   const handleVerifyAndRegister = async () => {
     try {
-      const response = await axios.post("https://localhost:7272/api/auth/verify-and-register", {
+      const response = await axios.post("https://sehirasistanim-backend-production.up.railway.app/api/auth/verify-and-register", {
         ...form,
         Kod: verificationCode
       });
@@ -57,7 +57,6 @@ export default function Register() {
         <img src={photo} alt="ŞehirAsistanım" className="w-full max-w-md rounded-xl shadow-lg" />
         <div className="flex justify-center space-x-3 mt-6">
           {/*<img src="https://cdn.simpleicons.org/html5" alt="html" className="w-6 h-6" />*/}
-        
         </div>
       </div>
 
