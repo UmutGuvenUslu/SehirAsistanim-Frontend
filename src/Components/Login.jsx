@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import photo from "./photo.jpg";
 import axios from "axios";
+import photo from "./photo.jpg";
 
 export default function Login() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     email: "",
-    password: ""
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,8 @@ export default function Login() {
         },
         {
           headers: {
-            "Content-Type": "application/json"
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -58,21 +58,22 @@ export default function Login() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
       {/* Sol tanıtım alanı */}
-      <div className="hidden md:flex md:w-1/2 bg-purple-800 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-slate-500 to-zinc-900 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
         <div className="max-w-md text-center">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            Şehir Asistanım CBS Yardım Sistemi
-          </h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">Şehir Asistanım</h1>
           <p className="text-gray-300">
-            Sisteme giriş yaparak şehrinizdeki sorunları takip edebilir, bildirimlerinizi
-            yönetebilirsiniz. Giriş yap, katkı sağla!
+            Sisteme giriş yaparak şehrinizdeki sorunları takip edebilir,
+            bildirimlerinizi yönetebilirsiniz. Giriş yap ve şehrinin gelişmesine katkı sağla!
           </p>
         </div>
         <img
           src={photo}
           alt="ŞehirAsistanım Görseli"
-          className="w-full max-w-md rounded-xl shadow-lg"
+          className="w-full max-w-xl rounded-xl shadow-lg"
         />
+        <div className="flex justify-center space-x-3 mt-6">
+          {/* Ek ikonlar buraya eklenebilir */}
+        </div>
       </div>
 
       {/* Sağ form alanı */}
@@ -106,19 +107,21 @@ export default function Login() {
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="form-checkbox" />
+                <input type="checkbox" className="form-checkbox accent-orange-500" />
                 <span>Beni hatırla</span>
               </label>
-              <a href="#" className="text-purple-600 hover:underline">
+              <a href="#" className="text-orange-500 hover:underline">
                 Şifremi unuttum?
               </a>
             </div>
 
-            {error && <p className="text-red-600 text-center">{error}</p>}
+            {error && (
+              <p className="text-red-600 text-center text-sm">{error}</p>
+            )}
 
             <button
               type="submit"
-              className={`w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition ${
+              className={`w-full bg-black text-white py-2 rounded hover:bg-gray-700 transition ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={loading}
@@ -129,7 +132,7 @@ export default function Login() {
 
           <p className="text-sm text-center mt-6">
             Hesabın yok mu?{" "}
-            <Link to="/kayitol" className="text-purple-600 hover:underline">
+            <Link to="/kayitol" className="text-orange-500 hover:underline">
               Kayıt Ol
             </Link>
           </p>
