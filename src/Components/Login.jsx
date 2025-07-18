@@ -1,25 +1,31 @@
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import photo from "./photo.jpg";
 
+// Sadece email validasyonu, password için zorunluluk yok
+const schema = z.object({
+  email: z.string().email("Geçerli bir email girin"),
+  password: z.string(), // Validasyon yok
+});
+
 export default function Login() {
   const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(schema),
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     setError("");
     setLoading(true);
 
@@ -27,8 +33,8 @@ export default function Login() {
       const response = await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/login",
         {
-          email: form.email,
-          password: form.password,
+          email: data.email,
+          password: data.password,
         },
         {
           headers: {
@@ -71,9 +77,6 @@ export default function Login() {
           alt="ŞehirAsistanım Görseli"
           className="w-full max-w-xl rounded-xl shadow-lg"
         />
-        <div className="flex justify-center space-x-3 mt-6">
-          {/* Ek ikonlar buraya eklenebilir */}
-        </div>
       </div>
 
       {/* Sağ form alanı */}
@@ -84,26 +87,26 @@ export default function Login() {
             Şehir Asistanım hesabına giriş yaparak sistemin tüm özelliklerinden yararlanabilirsin.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email"
-              name="email"
-              placeholder="Email adresiniz"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              required
-              value={form.email}
-              onChange={handleChange}
-            />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <input
+                type="email"
+                {...register("email")}
+                placeholder="Email adresiniz"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <p className="text-red-500 text-sm">{errors.email?.message}</p>
+            </div>
 
-            <input
-              type="password"
-              name="password"
-              placeholder="Şifreniz"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              required
-              value={form.password}
-              onChange={handleChange}
-            />
+            <div>
+              <input
+                type="password"
+                {...register("password")}
+                placeholder="Şifreniz"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              {/* Password için hata mesajı yok çünkü validasyon yok */}
+            </div>
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center space-x-2">
