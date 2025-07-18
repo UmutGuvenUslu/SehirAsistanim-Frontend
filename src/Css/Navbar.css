@@ -55,7 +55,7 @@
 }
 
 .auth-links {
-    margin-right: 10vh;
+
     display: flex;
     gap: 0.5em;
 }
@@ -129,6 +129,8 @@
     }
 
     .hamburger {
+        margin-right: 10vh;
+
         display: block;
     }
 }
