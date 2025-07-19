@@ -75,6 +75,19 @@ export default function Register() {
   const onSubmit = async (data) => {
     setLoadingSubmit(true);
     try {
+       // 1. Önce e-posta kayıtlı mı kontrol et
+      const checkResponse = await axios.get(
+        "https://sehirasistanim-backend-production.up.railway.app/api/auth/IsEmailRegistered",
+        { params: { email: data.Email } }
+      );
+
+      if (checkResponse.data.emailVar) {
+        toast.error("Bu e-posta adresi zaten kayıtlı!");
+        setLoadingSubmit(false);
+        return; // Burada dur, doğrulama kodu göndermiyoruz
+      }
+
+      // 2. Eğer kayıtlı değilse, doğrulama kodu gönder
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/send-verification-code",
         null,

@@ -109,7 +109,7 @@ export default function Login() {
               {/* Password için hata mesajı yok çünkü validasyon yok */}
             </div>
 
-            <div className="flex items-center justify-between text-sm">
+            {/*<div className="flex items-center justify-between text-sm">
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input type="checkbox" className="form-checkbox accent-orange-500" />
                 <span>Beni hatırla</span>
@@ -117,7 +117,7 @@ export default function Login() {
               <a href="#" className="text-orange-500 hover:underline">
                 Şifremi unuttum?
               </a>
-            </div>
+            </div>*/}
 
             {error && (
               <p className="text-red-600 text-center text-sm">{error}</p>
