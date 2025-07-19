@@ -6,29 +6,63 @@ import { Link } from "react-router-dom";
 import Modal from "./Modal";
 import axios from "axios";
 import photo from "./photo.jpg";
+import { toast } from "react-toastify";
+
+// Bugünkü tarih (gelecek tarih seçimini engellemek için)
+const today = new Date().toISOString().split("T")[0];
 
 // Zod validasyon şeması
 const schema = z
   .object({
-    Isim: z.string().min(1, "İsim gerekli"),
-    Soyisim: z.string().min(1, "Soyisim gerekli"),
-    TC: z.string().length(11, "TC 11 haneli olmalıdır"),
+    Isim: z.string()
+      .min(1, "İsim gerekli")
+      .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ]+$/, "İsim yalnızca harflerden oluşmalı"),
+
+    Soyisim: z.string()
+      .min(1, "Soyisim gerekli")
+      .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ]+$/, "Soyisim yalnızca harflerden oluşmalı"),
+
+    TC: z.string()
+      .regex(/^[0-9]{11}$/, "TC yalnızca 11 haneli rakamlardan oluşmalı"),
+
     Email: z.string().email("Geçerli email girin"),
-    TelefonNo: z.string().optional(),
-    Cinsiyet: z.string().optional(),
-    DogumTarihi: z.string().optional(),
-    Sifre: z.string().min(6, "Şifre en az 6 karakter olmalı"),
-    SifreTekrar: z.string().min(6, "Şifre tekrarı gerekli"),
+
+    TelefonNo: z.string()
+      .min(1, "Telefon numarası gerekli")
+      .regex(/^05\d{9}$/, "Geçerli bir telefon numarası girin"),
+
+    Cinsiyet: z.string()
+      .min(1, "Cinsiyet seçiniz"),
+
+    DogumTarihi: z.string()
+      .min(1, "Doğum tarihi gerekli")
+      .refine((date) => !date || new Date(date) <= new Date(), {
+        message: "Doğum tarihi bugünden ileri olamaz",
+      }),
+
+    // Şifre: en az 6 karakter, bir harf, bir sayı ve sadece belirtilen özel karakterlerden biri
+    Sifre: z.string()
+      .min(6, "Şifre en az 6 karakter olmalı")
+      .regex(
+        /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&.,_-])[A-Za-z\d@$!%*?&.,_-]{6,}$/,
+        "Şifre en az bir harf, bir rakam ve (@, $, !, %, *, ?, &, ., ,, _, -) karakterlerinden en az birini içermeli"
+      ),
+
+    SifreTekrar: z.string()
+      .min(6, "Şifre tekrarı gerekli"),
   })
   .refine((data) => data.Sifre === data.SifreTekrar, {
     message: "Şifreler eşleşmiyor",
     path: ["SifreTekrar"],
   });
 
+
 export default function Register() {
   const [showModal, setShowModal] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [formData, setFormData] = useState(null); // Axios için veriyi sakla
+  const [loadingSubmit, setLoadingSubmit] = useState(false); // Kod gönderme için
+  const [loadingVerify, setLoadingVerify] = useState(false); // Doğrulama için
 
   const {
     register,
@@ -39,6 +73,7 @@ export default function Register() {
   });
 
   const onSubmit = async (data) => {
+    setLoadingSubmit(true);
     try {
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/send-verification-code",
@@ -49,12 +84,17 @@ export default function Register() {
       );
       setFormData(data); // Kod doğrulaması sonrası kullanılmak üzere sakla
       setShowModal(true);
+      toast.success("Doğrulama kodu e-postanıza gönderildi!");
     } catch (err) {
-      alert("Kod gönderilirken hata oluştu: " + err.response?.data?.message);
+      toast.error("Kod gönderilirken hata oluştu: " + err.response?.data?.message);
+    } finally {
+       setLoadingSubmit(false); // İşlem bitti
     }
+
   };
 
   const handleVerifyAndRegister = async () => {
+    setLoadingVerify(true);
     try {
       const response = await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/verify-and-register",
@@ -63,10 +103,12 @@ export default function Register() {
           Kod: verificationCode,
         }
       );
-      alert("Kayıt başarılı: " + response.data.message);
+      toast.success("Kayıt başarılı: " + response.data.message);
       setShowModal(false);
     } catch (err) {
-      alert("Kayıt başarısız: " + err.response?.data?.message);
+      toast.error("Kayıt başarısız: " + err.response?.data?.message);
+    } finally {
+      setLoadingVerify(false);
     }
   };
 
@@ -132,14 +174,24 @@ export default function Register() {
               <p className="text-red-500 text-sm">{errors.TelefonNo?.message}</p>
             </div>
 
-            <select {...register("Cinsiyet")} className="w-full border border-gray-300 rounded px-3 py-2 text-gray-500">
+            <div>
+              <select {...register("Cinsiyet")} className="w-full border border-gray-300 rounded px-3 py-2 text-gray-500">
               <option value="">Cinsiyet seçiniz</option>
               <option value="Kadın">Kadın</option>
               <option value="Erkek">Erkek</option>
               <option value="Belirtmek istemiyorum">Belirtmek istemiyorum</option>
             </select>
+             <p className="text-red-500 text-sm">{errors.Cinsiyet?.message}</p>
+            </div>            
 
-            <input type="date" {...register("DogumTarihi")} className="w-full border border-gray-300 rounded px-3 py-2" />
+            {/* Doğum tarihi inputu - max bugünkü tarih */}
+            <input
+              type="date"
+              {...register("DogumTarihi")}
+              max={today} // Gelecek tarih seçimini engeller
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            />
+            <p className="text-red-500 text-sm">{errors.DogumTarihi?.message}</p>
 
             <div>
               <input type="password" {...register("Sifre")} placeholder="Şifrenizi girin" className="w-full border border-gray-300 rounded px-3 py-2" />
@@ -151,8 +203,36 @@ export default function Register() {
               <p className="text-red-500 text-sm">{errors.SifreTekrar?.message}</p>
             </div>
 
-            <button type="submit" className="w-full bg-black text-white py-2 rounded hover:bg-gray-700 transition">
-              Kayıt Ol
+            <button
+              type="submit"
+              disabled={loadingSubmit} // İşlem devam ediyorsa tıklanamaz
+              className={`w-full bg-black text-white py-2 rounded transition flex items-center justify-center 
+                ${loadingSubmit ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700 cursor-pointer"}`}
+            >
+              {loadingSubmit ? (
+                // Tailwind spinner
+                <svg
+                  className="animate-spin h-5 w-5 mr-2 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 000 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                  ></path>
+                </svg>
+              ) : null}
+              {loadingSubmit ? "İşlem yapılıyor..." : "Kayıt Ol"}
             </button>
           </form>
 
@@ -168,7 +248,8 @@ export default function Register() {
           code={verificationCode}
           setCode={setVerificationCode}
           onConfirm={handleVerifyAndRegister}
-          onCancel={() => setShowModal(false)}
+          onCancel={() => {setShowModal(false);  setVerificationCode("");}}
+          loadingVerify = {loadingVerify}
         />
       )}
     </div>

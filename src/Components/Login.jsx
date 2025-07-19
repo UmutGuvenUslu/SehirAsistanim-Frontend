@@ -5,6 +5,7 @@ import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import photo from "./photo.jpg";
+import { toast } from "react-toastify";
 
 // Sadece email validasyonu, password için zorunluluk yok
 const schema = z.object({
@@ -45,7 +46,7 @@ export default function Login() {
 
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
-        alert("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
+        toast.success("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
         navigate("/");
       } else {
         setError("Giriş başarısız: Token alınamadı.");
@@ -109,7 +110,7 @@ export default function Login() {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
                 <input type="checkbox" className="form-checkbox accent-orange-500" />
                 <span>Beni hatırla</span>
               </label>
@@ -124,7 +125,7 @@ export default function Login() {
 
             <button
               type="submit"
-              className={`w-full bg-black text-white py-2 rounded hover:bg-gray-700 transition ${
+              className={`w-full bg-black text-white py-2 rounded hover:bg-gray-700 transition cursor-pointer ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={loading}
