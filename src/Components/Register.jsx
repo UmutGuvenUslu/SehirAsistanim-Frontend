@@ -16,7 +16,7 @@ const schema = z
   .object({
     Isim: z.string()
       .min(1, "İsim gerekli")
-      .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ]+$/, "İsim yalnızca harflerden oluşmalı"),
+      .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/, "İsim yalnızca harflerden oluşmalı"),
 
     Soyisim: z.string()
       .min(1, "Soyisim gerekli")
