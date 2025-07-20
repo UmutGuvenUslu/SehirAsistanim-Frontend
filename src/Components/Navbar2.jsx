@@ -8,7 +8,7 @@ function Navbar2() {
     <>
       <div className="flex">
         <div className="fixed w-full transform z-50">
-          <nav className="bg-white/10 md:bg-transparent text-black md:text-white px-6 md:px-20 py-7 min-w-[300px] md:min-w-[700px]">
+<nav className="bg-white/70 md:bg-transparent text-black md:text-white px-6 md:px-20 py-7 min-w-[300px] md:min-w-[700px]">
             <div className="flex items-center justify-between">
 {/* Logo */}
 <div className="flex items-center space-x-3">
