@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
@@ -13,14 +14,14 @@ export default function Navbar() {
           {/* Linkler */}
           <div className="flex items-center space-x-6 text-sm font-medium">
             <a href="#" className="hover:text-gray-700 transition">Anasayfa</a>
-            <a href="#" className="hover:text-gray-700 transition">Hakkında</a>
-            <a href="#" className="hover:text-gray-700 transition">Giriş</a>
-            <a
-              href="#"
+            <a href="/hakkinda" className="hover:text-gray-700 transition">Hakkında</a>
+            <Link to="/girisyap" className="hover:text-gray-700 transition">Giriş</Link>
+            <Link
+              to="/kayitol"
               className="bg-black text-white px-4 py-1 rounded-full hover:bg-gray-800 transition"
             >
               Kayıt Ol
-            </a>
+            </Link>
           </div>
         </div>
       </nav>

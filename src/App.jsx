@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';  // sadece Routes ve Route al
+import UserMap from "./Components/UserMap";
 import Login from './Components/Login';
 import Register from './Components/Register';
 import './App.css';
@@ -17,11 +18,13 @@ function App() {
         <Route element={<AuthLayout />}>
           <Route path="/girisyap" element={<Login />} />
           <Route path="/kayitol" element={<Register />} />
+
         </Route>
 
         {/* Genel sayfalar */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Register />} />
+          <Route path="/" element={<UserMap />} />
+
         </Route>
       </Routes>
 
