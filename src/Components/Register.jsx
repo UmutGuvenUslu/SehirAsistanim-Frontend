@@ -150,7 +150,7 @@ export default function Register() {
       {/* Sağ form alanı */}
       <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12 min-h-screen">
         <div className="w-full max-w-md">
-          <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">Kayıt Ol</h2>
+          <h2 className="text-2xl font-bold text-center pt-5 mb-2 text-gray-800">Kayıt Ol</h2>
           <p className="text-sm text-gray-500 text-center mb-6">
             Haydi sen de kayıt ol ve sorunlarının çözümlerine ulaş!
           </p>
