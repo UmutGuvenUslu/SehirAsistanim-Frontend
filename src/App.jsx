@@ -5,11 +5,15 @@ import Register from './Components/Register';
 import './App.css';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Navbar from './Components/Navbar';
+import Navbar2 from './Components/Navbar2';
 
 function App() {
   return (
     <>
+     
     <div>
+    <Navbar2/>
     <Routes>
         <Route path="/" element={<Register />} />
         <Route path="/girisyap" element={<Login />} />
