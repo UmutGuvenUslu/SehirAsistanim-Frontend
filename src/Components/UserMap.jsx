@@ -27,10 +27,10 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [category, setCategory] = useState("Çevre Kirliliği");
   const [photos, setPhotos] = useState([]);
   const [coords, setCoords] = useState([null, null]);
-  const [address, setAddress] = useState(""); // <-- Yeni state
+  const [address, setAddress] = useState(""); // Yeni state: adres metni
   const [isUploading, setIsUploading] = useState(false);
 
-  // Harita boyut kontrolü (mobil vs)
+  // Mobil kontrolü
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -42,7 +42,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     };
   }, []);
 
-  // Konum adresini ters-geocode ile alma fonksiyonu
+  // Adres alma fonksiyonu (Nominatim ters-geocode)
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -60,7 +60,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
-  // Harita ve işaretçi kurulum
+  // Harita ve marker kurulum
   useEffect(() => {
     const turkeyCenter = fromLonLat([35.2433, 38.9637]);
     const vectorSource = new VectorSource();
@@ -78,7 +78,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         center: turkeyCenter,
         zoom: 7,
       }),
-      controls: defaultControls({ zoom: false }),
+      controls: defaultControls({ zoom: false, attribution: false }),
     });
     mapObjRef.current = map;
 
@@ -94,7 +94,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             map.getView().animate({ center: userCoord, zoom: 14 });
             onCoordinateSelect?.([lon, lat]);
             setCoords([lon, lat]);
-            fetchAddress(lon, lat); // Burada adresi çekiyoruz
+            fetchAddress(lon, lat); // Adresi çekiyoruz
           }
 
           setLocationError("");
@@ -136,12 +136,14 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     marker.setStyle(markerStyle);
     vectorSourceRef.current.addFeature(marker);
 
+    // Önce varsa translate etkileşimini kaldır
     mapObjRef.current.getInteractions().forEach((interaction) => {
       if (interaction instanceof Translate) {
         mapObjRef.current.removeInteraction(interaction);
       }
     });
 
+    // Yeni translate etkileşimi ekle
     const translate = new Translate({
       features: vectorSourceRef.current.getFeaturesCollection(),
     });
@@ -156,6 +158,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     });
   };
 
+  // selectedCoordinate değişince marker ve adres güncelle
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -163,20 +166,21 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     mapObjRef.current.getView().animate({ center: coord, zoom: 16 });
     addDraggableMarker(coord);
     setCoords(selectedCoordinate);
-    fetchAddress(selectedCoordinate[0], selectedCoordinate[1]); // selectedCoordinate değiştiğinde de al
+    fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  // Form toggle, fotoğraf değişimi, submit zaten aynı kalabilir...
-
+  // Form toggle
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
+  // Fotoğraf değişimi
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files);
     setPhotos(files);
   };
 
+  // Form gönderme
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsUploading(true);
@@ -193,6 +197,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       setCoords([null, null]);
     }, 2000);
   };
+
+  // **Harita yüksekliği form açık/kapalı durumuna ve cihaz tipine göre**
+  const mapHeight = isMobile
+    ? isFormOpen
+      ? "50vh" // Form açıkken harita yüksekliği yarıya iner
+      : "100vh" // Kapalıyken tam yükseklik
+    : "100vh"; // PC'de hep tam yükseklik
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh" }}>
@@ -216,6 +227,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         </div>
       )}
 
+      {/* Şikayet Oluştur butonu */}
       <button
         onClick={toggleForm}
         className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30"
@@ -226,6 +238,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
       </button>
 
+      {/* Form container */}
       <div
         className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-transform duration-300 ease-in-out ${
           isMobile
@@ -261,7 +274,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             </button>
           </div>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Başlık, Açıklama, Kategori alanları aynen */}
+            {/* Başlık */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Başlık
@@ -275,6 +288,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
+            {/* Açıklama */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Açıklama
@@ -288,6 +302,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
+            {/* Kategori */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Kategori
@@ -305,7 +320,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               </select>
             </div>
 
-            {/* Burada readonly lon lat inputları kaldırıp adresi gösteriyoruz */}
+            {/* Adres gösterimi */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Konum
@@ -318,18 +333,19 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
-            {/* Fotoğraf yükleme, yükleme durumu, gönder butonu aynı */}
+            {/* Fotoğraf yükleme */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Fotoğraf Yükle
               </label>
 
+              {/* capture mobilde kaldırıldı */}
               <input
                 id="file-upload"
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
+                capture={isMobile ? undefined : "environment"} // Mobilde galeriden/kamera seçilir
                 onChange={handlePhotoChange}
                 className="hidden"
               />
@@ -340,6 +356,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
                 Fotoğraf Seç veya Kamera Aç
               </label>
 
+              {/* Temizle butonu */}
               {photos.length > 0 && (
                 <button
                   type="button"
@@ -351,6 +368,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
                 </button>
               )}
 
+              {/* Fotoğraf önizleme */}
               {photos.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                   {photos.map((file, i) => {
@@ -369,6 +387,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               )}
             </div>
 
+            {/* Yükleniyor göstergesi */}
             {isUploading && (
               <div className="flex items-center justify-center space-x-2 text-orange-600 font-semibold mt-2">
                 <svg
@@ -395,6 +414,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               </div>
             )}
 
+            {/* Gönder butonu */}
             <button
               type="submit"
               disabled={isUploading}
@@ -410,13 +430,15 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         </div>
       </div>
 
+      {/* Harita */}
       <div
         ref={mapRef}
         style={{
           width: "100%",
-          height: "100%",
+          height: mapHeight, // Dinamik yükseklik (mobilde form açıkken küçülür)
           borderRadius: "8px",
           overflow: "hidden",
+          transition: "height 0.5s ease", // Burada geçiş efekti var
         }}
       />
     </div>
