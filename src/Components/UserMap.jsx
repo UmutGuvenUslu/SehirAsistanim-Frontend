@@ -11,6 +11,7 @@ import VectorSource from "ol/source/Vector";
 import VectorLayer from "ol/layer/Vector";
 import { Icon, Style } from "ol/style";
 import Translate from "ol/interaction/Translate";
+import { defaults as defaultControls } from 'ol/control';
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     const mapRef = useRef();
@@ -39,8 +40,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
                 center: turkeyCenter,
                 zoom: 7,
             }),
+            controls: defaultControls({ zoom: false }), // zoom kontrollerini kapatır
         });
-
         mapObjRef.current = map;
 
         // Konum alma işlemi
