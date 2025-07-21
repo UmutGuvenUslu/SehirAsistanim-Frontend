@@ -11,9 +11,8 @@ import VectorSource from "ol/source/Vector";
 import VectorLayer from "ol/layer/Vector";
 import { Icon, Style } from "ol/style";
 import Translate from "ol/interaction/Translate";
-import SearchBox from "./SearchBox";
 
-const UserMap = ({ onCoordinateSelect }) => {
+const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     const mapRef = useRef();
     const mapObjRef = useRef(null);
     const vectorSourceRef = useRef(null);
@@ -44,40 +43,6 @@ const UserMap = ({ onCoordinateSelect }) => {
 
         mapObjRef.current = map;
 
-        const markerStyle = new Style({
-            image: new Icon({
-                anchor: [0.5, 1],
-                src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-                scale: 0.05,
-            }),
-        });
-
-        const addDraggableMarker = (coord) => {
-            vectorSource.clear(); // Önceki markerları temizle
-
-            const marker = new Feature({
-                geometry: new Point(coord),
-            });
-            marker.setStyle(markerStyle);
-            vectorSource.addFeature(marker);
-
-            // Önceki Translate kaldır
-            map.getInteractions().forEach((interaction) => {
-                if (interaction instanceof Translate) {
-                    map.removeInteraction(interaction);
-                }
-            });
-
-            const translate = new Translate({ features: vectorSource.getFeaturesCollection() });
-            map.addInteraction(translate);
-
-            translate.on("translateend", (e) => {
-                const geom = e.features.item(0).getGeometry();
-                const newCoord = toLonLat(geom.getCoordinates());
-                onCoordinateSelect?.(newCoord);
-            });
-        };
-
         // Konum alma işlemi
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -86,16 +51,21 @@ const UserMap = ({ onCoordinateSelect }) => {
                     const lat = position.coords.latitude;
                     const userCoord = fromLonLat([lon, lat]);
 
-                    addDraggableMarker(userCoord);
+                    // Eğer başlangıçta seçili koordinat yoksa kullanıcı konumunu göster
+                    if (!selectedCoordinate) {
+                        addDraggableMarker(userCoord);
+                        map.getView().animate({ center: userCoord, zoom: 14 });
+                        onCoordinateSelect?.([lon, lat]);
+                    }
 
-                    map.getView().animate({ center: userCoord, zoom: 20 });
-                    onCoordinateSelect?.([lon, lat]);
                     setLocationError("");
                 },
                 (error) => {
                     console.warn("Konum alınamadı, Türkiye zoomunda kalacak:", error);
                     if (error.code === error.PERMISSION_DENIED) {
-                        setLocationError("Konum izni verilmedi. Lütfen tarayıcı ayarlarından konum izinlerini açınız.");
+                        setLocationError(
+                            "Konum izni verilmedi. Lütfen tarayıcı ayarlarından konum izinlerini açınız."
+                        );
                     } else {
                         setLocationError("Konum alınamadı, lütfen tekrar deneyiniz.");
                     }
@@ -106,17 +76,14 @@ const UserMap = ({ onCoordinateSelect }) => {
         }
 
         return () => map.setTarget(null);
-    }, [onCoordinateSelect]);
+    }, []); // sadece mount ve unmount
 
-    // Arama sonuçları geldiğinde çağrılır
-    const handleSearchResult = (lonLat) => {
-        if (!mapObjRef.current) return;
-        const coord = fromLonLat(lonLat);
-        mapObjRef.current.getView().animate({ center: coord, zoom: 16 });
-        if (vectorSourceRef.current) {
-            vectorSourceRef.current.clear();
-        }
-        // Marker ekle
+    // Haritada marker ve sürükleme işlemi için fonksiyon
+    const addDraggableMarker = (coord) => {
+        if (!vectorSourceRef.current || !mapObjRef.current) return;
+
+        vectorSourceRef.current.clear();
+
         const markerStyle = new Style({
             image: new Icon({
                 anchor: [0.5, 1],
@@ -124,31 +91,38 @@ const UserMap = ({ onCoordinateSelect }) => {
                 scale: 0.05,
             }),
         });
+
         const marker = new Feature({
             geometry: new Point(coord),
         });
         marker.setStyle(markerStyle);
         vectorSourceRef.current.addFeature(marker);
 
-        // Sürüklenebilir marker için Translate ekle
-        const map = mapObjRef.current;
-        map.getInteractions().forEach((interaction) => {
+        // Önceki Translate kaldır
+        mapObjRef.current.getInteractions().forEach((interaction) => {
             if (interaction instanceof Translate) {
-                map.removeInteraction(interaction);
+                mapObjRef.current.removeInteraction(interaction);
             }
         });
 
         const translate = new Translate({ features: vectorSourceRef.current.getFeaturesCollection() });
-        map.addInteraction(translate);
+        mapObjRef.current.addInteraction(translate);
 
         translate.on("translateend", (e) => {
             const geom = e.features.item(0).getGeometry();
             const newCoord = toLonLat(geom.getCoordinates());
             onCoordinateSelect?.(newCoord);
         });
-
-        onCoordinateSelect?.(lonLat);
     };
+
+    // selectedCoordinate değiştiğinde haritayı güncelle
+    useEffect(() => {
+        if (!selectedCoordinate || !mapObjRef.current) return;
+
+        const coord = fromLonLat(selectedCoordinate);
+        mapObjRef.current.getView().animate({ center: coord, zoom: 16 });
+        addDraggableMarker(coord);
+    }, [selectedCoordinate]);
 
     return (
         <div style={{ position: "relative", width: "100%", height: "100vh" }}>
@@ -171,10 +145,6 @@ const UserMap = ({ onCoordinateSelect }) => {
                     {locationError}
                 </div>
             )}
-
-            <div style={{ position: "absolute", top: 10, left: 10, zIndex: 1100, width: 300 }}>
-                <SearchBox onSearchResult={handleSearchResult} />
-            </div>
 
             <div
                 ref={mapRef}

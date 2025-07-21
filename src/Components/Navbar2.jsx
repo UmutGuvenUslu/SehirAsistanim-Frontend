@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-
+import { Link } from "react-router-dom";
 function Navbar2() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -8,29 +8,29 @@ function Navbar2() {
     <>
       <div className="flex">
         <div className="fixed w-full transform z-50">
-<nav className="bg-white/70 md:bg-transparent text-black md:text-white px-6 md:px-20 py-7 min-w-[300px] md:min-w-[700px]">
+          <nav className="bg-white/70 md:bg-transparent text-black md:text-white px-6 md:px-20 py-7 min-w-[300px] md:min-w-[700px]">
             <div className="flex items-center justify-between">
-{/* Logo */}
-<div className="flex items-center space-x-3">
-  <span
-    className="font-medium text-black md:text-white text-lg block md:hidden"
-    style={{ fontFamily: "Sora, sans-serif" }}
-  >
-    SEHİR ASİSTANIM
-  </span>
-</div>
+              {/* Logo */}
+              <div className="flex items-center space-x-3">
+                <span
+                  className="font-medium text-black md:text-white text-lg block md:hidden"
+                  style={{ fontFamily: "Sora, sans-serif" }}
+                >
+                  SEHİR ASİSTANIM
+                </span>
+              </div>
 
               {/* Masaüstü linkler */}
               <div className="hidden md:flex items-center space-x-8 text-md font-medium">
-                <a href="#" className="hover:text-orange-500 transition text-black">
+                <Link to="/girisyap" className="hover:text-orange-500 transition text-black">
                   Giriş Yap
-                </a>
-                <a
-                  href="#"
+                </Link>
+                <Link
+                  to="/kayitol"
                   className="text-white bg-orange-500 px-4 py-1 rounded-full hover:bg-gray-800 transition"
                 >
                   Kayıt Ol
-                </a>
+                </Link>
               </div>
 
               {/* Mobil hamburger butonu */}
@@ -44,23 +44,22 @@ function Navbar2() {
               </div>
             </div>
 
-           {/* Mobil menü içeriği */}
-<div
-  className={`flex md:hidden overflow-hidden justify-center transition-all duration-300 ease-in-out ${
-    isOpen ? "max-h-40 mt-4" : "max-h-0"
-  }`}
->
-  <div className="bg-orange-500/20 rounded-lg backdrop-blur-sm px-4 py-3 w-full">
-    <div className="flex flex-col items-center gap-3">
-      <a href="#" className="text-black hover:text-gray-700 transition">
-        Giriş Yap
-      </a>
-      <a href="#" className="text-black hover:text-gray-700 transition">
-        Kayıt Ol
-      </a>
-    </div>
-  </div>
-</div>
+            {/* Mobil menü içeriği */}
+            <div
+              className={`flex md:hidden overflow-hidden justify-center transition-all duration-300 ease-in-out ${isOpen ? "max-h-40 mt-4" : "max-h-0"
+                }`}
+            >
+              <div className="bg-orange-500/20 rounded-lg backdrop-blur-sm px-4 py-3 w-full">
+                <div className="flex flex-col items-center gap-3">
+                  <a href="#" className="text-black hover:text-gray-700 transition">
+                    Giriş Yap
+                  </a>
+                  <a href="#" className="text-black hover:text-gray-700 transition">
+                    Kayıt Ol
+                  </a>
+                </div>
+              </div>
+            </div>
 
           </nav>
         </div>

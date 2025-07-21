@@ -10,7 +10,6 @@ const SearchBox = ({ onSearchResult }) => {
 
     const wrapperRef = useRef(null);
 
-    // Sayfa dışında tıklanınca dropdown'u kapatmak için:
     useEffect(() => {
         function handleClickOutside(event) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -21,7 +20,6 @@ const SearchBox = ({ onSearchResult }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Sorgu değiştikçe sonuçları getir
     useEffect(() => {
         if (!query.trim()) {
             setResults([]);
@@ -33,15 +31,18 @@ const SearchBox = ({ onSearchResult }) => {
             setLoading(true);
             setError("");
             try {
-                const response = await axios.get("https://nominatim.openstreetmap.org/search", {
-                    params: {
-                        q: query,
-                        format: "json",
-                        addressdetails: 1,
-                        limit: 5, // En fazla 5 sonuç göster
-                        countrycodes: "tr",
-                    },
-                });
+                const response = await axios.get(
+                    "https://nominatim.openstreetmap.org/search",
+                    {
+                        params: {
+                            q: query,
+                            format: "json",
+                            addressdetails: 1,
+                            limit: 5,
+                            countrycodes: "tr",
+                        },
+                    }
+                );
                 setResults(response.data);
                 setShowDropdown(true);
             } catch {
@@ -51,13 +52,10 @@ const SearchBox = ({ onSearchResult }) => {
             }
         };
 
-        // 300ms debounce ile istek gönderelim (fazla istek önlemek için)
         const timeoutId = setTimeout(fetchResults, 300);
-
         return () => clearTimeout(timeoutId);
     }, [query]);
 
-    // Bir sonucu seçince
     const handleSelect = (place) => {
         setQuery(place.display_name);
         setShowDropdown(false);
@@ -70,12 +68,10 @@ const SearchBox = ({ onSearchResult }) => {
         <div
             ref={wrapperRef}
             style={{
-                background: "white",
+                background: "transparent",
                 padding: 8,
-                borderRadius: 6,
-                boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
                 position: "relative",
-                width: 300,
+                width: "100%",
             }}
         >
             <input
@@ -86,19 +82,18 @@ const SearchBox = ({ onSearchResult }) => {
                 onFocus={() => query && setShowDropdown(true)}
                 style={{
                     width: "100%",
-                    padding: "6px 8px",
+                    padding: "8px 12px",
                     fontSize: 14,
-                    borderRadius: 4,
+                    borderRadius: 6,
                     border: "1px solid #ccc",
                 }}
+                autoFocus
             />
 
             {loading && <div style={{ marginTop: 4, fontSize: 12 }}>Aranıyor...</div>}
 
             {error && (
-                <div style={{ color: "red", marginTop: 4, fontSize: 12 }}>
-                    {error}
-                </div>
+                <div style={{ color: "red", marginTop: 4, fontSize: 12 }}>{error}</div>
             )}
 
             {showDropdown && results.length > 0 && (
@@ -128,7 +123,7 @@ const SearchBox = ({ onSearchResult }) => {
                                 cursor: "pointer",
                                 borderBottom: "1px solid #eee",
                             }}
-                            onMouseDown={(e) => e.preventDefault()} // Input focus kaybını önler
+                            onMouseDown={(e) => e.preventDefault()}
                         >
                             {place.display_name}
                         </li>
