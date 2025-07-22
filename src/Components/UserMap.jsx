@@ -14,34 +14,64 @@ import Translate from "ol/interaction/Translate";
 import Overlay from "ol/Overlay";
 import { defaults as defaultControls } from "ol/control";
 import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
+const supabaseKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const mapRef = useRef();
+  const fileInputRef = useRef(null);
   const mapObjRef = useRef(null);
-  const vectorSourceRef = useRef(null);           // Şikayet markerları
-  const userMarkerSourceRef = useRef(null);       // Kullanıcı markerı
+  const vectorSourceRef = useRef(null);
+  const userMarkerSourceRef = useRef(null);
   const [locationError, setLocationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Çevre Kirliliği");
+  const [category, setCategory] = useState("1"); // string olarak başlangıç
   const [photos, setPhotos] = useState([]);
   const [coords, setCoords] = useState([null, null]);
   const [address, setAddress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Popup refs & state
   const popupRef = useRef(null);
   const overlayRef = useRef(null);
   const translateInteractionRef = useRef(null);
-
-  // Popup bilgilerini state’de tutuyoruz (React için)
   const [popupInfo, setPopupInfo] = useState(null);
 
-  // Mobil kontrolü
+  const getUserIdFromToken = (token) => {
+    try {
+      if (!token) return null;
+      const parts = token.split(".");
+      if (parts.length !== 3) return null;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const data = JSON.parse(jsonPayload);
+      return (
+        data.sub ||
+        data.userId ||
+        data.id ||
+        data.nameidentifier ||
+        data["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
+        null
+      );
+    } catch (error) {
+      console.error("Token çözümleme hatası:", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -53,7 +83,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     };
   }, []);
 
-  // Adres alma fonksiyonu (Nominatim ters-geocode)
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -61,22 +90,17 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       );
       if (!response.ok) throw new Error("Adres alınamadı");
       const data = await response.json();
-      if (data && data.display_name) {
-        setAddress(data.display_name);
-      } else {
-        setAddress("Adres bulunamadı");
-      }
+      setAddress(data?.display_name || "Adres bulunamadı");
     } catch {
       setAddress("Adres alınamadı");
     }
   };
 
-  // Harita ve marker kurulum
   useEffect(() => {
     const turkeyCenter = fromLonLat([35.2433, 38.9637]);
 
-    const complaintSource = new VectorSource(); // Şikayetler
-    const userMarkerSource = new VectorSource(); // Kullanıcı markerı
+    const complaintSource = new VectorSource();
+    const userMarkerSource = new VectorSource();
 
     vectorSourceRef.current = complaintSource;
     userMarkerSourceRef.current = userMarkerSource;
@@ -86,18 +110,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
     const map = new Map({
       target: mapRef.current,
-      layers: [
-        new TileLayer({ source: new OSM() }),
-        complaintLayer,
-        userMarkerLayer,
-      ],
+      layers: [new TileLayer({ source: new OSM() }), complaintLayer, userMarkerLayer],
       view: new View({ center: turkeyCenter, zoom: 7 }),
       controls: defaultControls({ zoom: false, attribution: false }),
     });
 
     mapObjRef.current = map;
 
-    // ** Popup Overlay oluşturma ve haritaya ekleme (bir kere) **
     const popupDiv = document.createElement("div");
     popupDiv.className = "ol-popup";
     popupDiv.style.position = "absolute";
@@ -121,7 +140,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
-    // Harita üzerinde tek tıklama ile popup açma/kapatma
     map.on("singleclick", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
 
@@ -130,7 +148,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         overlay.setPosition(coord);
 
         const data = feature.get("complaintData");
-        // Popup içeriğini güncelle
         popupDiv.innerHTML = `
           <h3 style="margin:0 0 8px 0;">${data.baslik || "Başlık Yok"}</h3>
           <p style="margin:0 0 4px 0;">${data.aciklama || "Açıklama Yok"}</p>
@@ -146,13 +163,11 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           ">Kapat</button>
         `;
 
-        // Popup animasyon açma
         setTimeout(() => {
           popupDiv.style.opacity = "1";
           popupDiv.style.transform = "translateY(0)";
         }, 10);
 
-        // Kapatma butonu işlevi
         popupDiv.querySelector("#popup-close-btn").onclick = () => {
           popupDiv.style.opacity = "0";
           popupDiv.style.transform = "translateY(10px)";
@@ -163,7 +178,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
         setPopupInfo(data);
       } else {
-        // Popup kapat
         popupDiv.style.opacity = "0";
         popupDiv.style.transform = "translateY(10px)";
         setTimeout(() => {
@@ -173,7 +187,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       }
     });
 
-    // Kullanıcının konumu
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -206,7 +219,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     return () => map.setTarget(null);
   }, []);
 
-  // Kullanıcı markerı ekleme ve taşıma etkileşimi
   const addDraggableMarker = (coord) => {
     if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
@@ -226,18 +238,14 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
     userMarkerSourceRef.current.addFeature(marker);
 
-    // Önceki translate etkileşimini kaldır
     if (translateInteractionRef.current) {
       mapObjRef.current.removeInteraction(translateInteractionRef.current);
       translateInteractionRef.current = null;
     }
 
-    // Yalnızca userMarkerSource'daki feature'ları taşınabilir yap
     const translate = new Translate({
       features: userMarkerSourceRef.current.getFeaturesCollection(),
-      filter: function(feature, layer) {
-        return userMarkerSourceRef.current.getFeatures().includes(feature);
-      }
+      filter: (feature) => userMarkerSourceRef.current.getFeatures().includes(feature),
     });
 
     mapObjRef.current.addInteraction(translate);
@@ -252,7 +260,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     });
   };
 
-  // selectedCoordinate değişince marker ekle
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -263,7 +270,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  // Şikayetleri backend’den çekip marker olarak ekleme
   useEffect(() => {
     if (!vectorSourceRef.current) return;
 
@@ -312,205 +318,281 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     setIsFormOpen(!isFormOpen);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (photos.length === 0) {
+      alert("Lütfen en az bir fotoğraf seçin.");
+      return;
+    }
+    if (!title || !description || !category || !coords[0] || !coords[1]) {
+      alert("Lütfen tüm alanları doldurun.");
+      return;
+    }
+
     setIsUploading(true);
 
-    setTimeout(() => {
-      setIsUploading(false);
-      alert("Şikayet gönderildi! (Demo)");
+    try {
+      const file = photos[0];
+      const fileExt = file.name.split(".").pop();
+      const fileName = `complaints/${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("sehirasistanimdata")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("sehirasistanimdata")
+        .getPublicUrl(fileName);
+
+      const token = localStorage.getItem("token");
+      const kullaniciid = getUserIdFromToken(token);
+
+      if (!kullaniciid) {
+        throw new Error("Kullanıcı ID çözülemedi.");
+      }
+const body = {
+  KullaniciId: kullaniciid,    // token'dan çözdüğün id
+  Baslik: title,
+  Aciklama: description,       // Burada kesinlikle büyük A ile yazılmalı
+  SikayetTuruId: parseInt(category),  // kategori id, sayısal
+  Latitude: coords[1],         // enlem
+  Longitude: coords[0],        // boylam
+  FotoUrl: publicUrl,
+  GonderilmeTarihi: new Date().toISOString(),
+  CozulmeTarihi: null,
+  Durum: 0,
+  DogrulanmaSayisi: 0,
+  Silindimi: false,
+  CozenBirimId: null
+  // DuyguPuani gönderme, backend hesaplayacak
+};
+      console.log("Gönderilecek body:", body);
+
+      await axios.post(
+        "https://sehirasistanim-backend-production.up.railway.app/Sikayet/Add",
+        body,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      alert("Şikayetiniz başarıyla gönderildi!");
+
       setTitle("");
       setDescription("");
-      setCategory("Çevre Kirliliği");
+      setCategory("1");
       setPhotos([]);
       setIsFormOpen(false);
       setAddress("");
       setCoords([null, null]);
-    }, 2000);
+    } catch (error) {
+      if (error.response) {
+        console.error("Backend hatası:", error.response.status, error.response.data);
+        alert(`Şikayet gönderilirken backend hatası: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      } else if (error.request) {
+        console.error("İstek yapıldı, yanıt alınamadı:", error.request);
+        alert("Sunucudan yanıt alınamadı.");
+      } else {
+        console.error("İstek ayarlarında hata:", error.message);
+        alert(`Hata: ${error.message}`);
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const mapHeight = isMobile ? (isFormOpen ? "50vh" : "100vh") : "100vh";
 
-  return (
-    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-      {locationError && (
-        <div
-          style={{
-            position: "absolute",
-            top: 10,
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "rgba(255, 69, 58, 0.9)",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: 5,
-            zIndex: 1000,
-            fontWeight: "bold",
-            fontSize: "14px",
-          }}
-        >
-          {locationError}
-        </div>
-      )}
-
-      <button
-        onClick={toggleForm}
-        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
-        aria-label="Şikayet formunu aç/kapa"
-        style={{ display: isFormOpen && isMobile ? "none" : "flex" }}
-      >
-        <span className="mr-2">Şikayet Oluştur</span>
-        <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
-      </button>
-
+ return (
+  <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+    {locationError && (
       <div
-        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
-          isMobile
-            ? "bottom-0 left-0 right-0 h-1/2"
-            : "right-6 bottom-16 w-[380px] max-h-[70vh]"
-        }`}
         style={{
-          transform: isMobile
-            ? isFormOpen
-              ? "translateY(0)"
-              : "translateY(100%)"
-            : isFormOpen
-            ? "translateY(0)"
-            : "translateY(100%)",
-          opacity: isFormOpen ? 1 : 0,
-          pointerEvents: isFormOpen ? "auto" : "none",
-          display: "flex",
-          flexDirection: "column",
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(255, 69, 58, 0.9)",
+          color: "white",
+          padding: "10px 20px",
+          borderRadius: 5,
+          zIndex: 1000,
+          fontWeight: "bold",
+          fontSize: "14px",
         }}
       >
-        <div className="p-6 overflow-y-auto" style={{ flexGrow: 1, minHeight: 0 }}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Şikayet Formu</h2>
-            <button
-              onClick={toggleForm}
-              className="text-gray-500 hover:text-gray-700 text-lg"
-              aria-label="Formu kapat"
-            >
-              ✕
-            </button>
-          </div>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Başlık</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Açıklama</label>
-              <textarea
-                rows="4"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Kategori</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                required
-              >
-                <option>Çevre Kirliliği</option>
-                <option>Altyapı</option>
-                <option>Ulaşım</option>
-                <option>Diğer</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Konum</label>
-              <input
-                type="text"
-                value={address || "Konum seçiniz"}
-                readOnly
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            <div className="text-center">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fotoğraf Yükle
-              </label>
-              <input
-                id="file-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                capture={isMobile ? undefined : "environment"}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files);
-                  setPhotos(files);
-                }}
-                className="hidden"
-              />
-              <div className="flex flex-row items-center justify-center">
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
-                >
-                  Fotoğraf Seç veya Kamera Aç
-                </label>
-
-                {photos.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setPhotos([])}
-                    aria-label="Seçilen fotoğrafları temizle"
-                    className="ml-2  inline-flex items-center justify-center rounded-md bg-red-500 hover:bg-red-600 text-white p-2"
-                    style={{ height: "40px" }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19 7L5 7M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isUploading}
-              className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
-            >
-              {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
-            </button>
-          </form>
-        </div>
+        {locationError}
       </div>
+    )}
 
-      <div
-        ref={mapRef}
-        id="map"
-        style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
-      />
+    <button
+      onClick={toggleForm}
+      className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
+      aria-label="Şikayet formunu aç/kapa"
+      style={{ display: isFormOpen && isMobile ? "none" : "flex" }}
+    >
+      <span className="mr-2">Şikayet Oluştur</span>
+      <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
+    </button>
+
+    <div
+      className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
+        isMobile
+          ? "bottom-0 left-0 right-0 h-1/2"
+          : "right-6 bottom-16 w-[380px] max-h-[70vh]"
+      }`}
+      style={{
+        transform: isMobile
+          ? isFormOpen
+            ? "translateY(0)"
+            : "translateY(100%)"
+          : isFormOpen
+          ? "translateY(0)"
+          : "translateY(100%)",
+        opacity: isFormOpen ? 1 : 0,
+        pointerEvents: isFormOpen ? "auto" : "none",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div className="p-6 overflow-y-auto" style={{ flexGrow: 1, minHeight: 0 }}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Şikayet Formu</h2>
+          <button
+            onClick={toggleForm}
+            className="text-gray-500 hover:text-gray-700 text-lg"
+            aria-label="Formu kapat"
+          >
+            ✕
+          </button>
+        </div>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Başlık</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Açıklama</label>
+            <textarea
+              rows="4"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Kategori</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+              required
+            >
+              <option>Çevre Kirliliği</option>
+              <option>Altyapı</option>
+              <option>Ulaşım</option>
+              <option>Diğer</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Konum</label>
+            <input
+              type="text"
+              value={address || "Konum seçiniz"}
+              readOnly
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-gray-100 cursor-not-allowed"
+            />
+          </div>
+
+          {/* Dosya yükleme alanı - burası yenilendi */}
+          <div className="text-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fotoğraf Yükle
+            </label>
+            <input
+  id="file-upload"
+  type="file"
+  accept="image/*"
+  multiple
+  capture={isMobile ? undefined : "environment"}
+  onChange={(e) => {
+    const files = Array.from(e.target.files);
+    setPhotos(files);
+  }}
+  className="hidden"
+  ref={fileInputRef}
+/>
+            <div className="flex flex-row items-center justify-center">
+              <label
+                htmlFor="file-upload"
+                className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
+              >
+                Fotoğraf Seç veya Kamera Aç
+              </label>
+
+              {photos.length > 0 && (
+  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+    {photos.map((file, index) => {
+      const objectUrl = URL.createObjectURL(file);
+      return (
+        <div key={index} className="relative w-20 h-20 rounded overflow-hidden border border-gray-300">
+          <img
+            src={objectUrl}
+            alt={`Fotoğraf önizleme ${index + 1}`}
+            className="w-full h-full object-cover"
+            onLoad={() => URL.revokeObjectURL(objectUrl)} // Bellek sızıntısını önlemek için
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setPhotos((prev) => prev.filter((_, i) => i !== index));
+            }}
+            aria-label="Fotoğrafı sil"
+            className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1.5 hover:bg-red-700"
+          >
+            ×
+          </button>
+        </div>
+      );
+    })}
+  </div>
+)}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isUploading}
+            className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
+          >
+            {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
+          </button>
+        </form>
+      </div>
     </div>
-  );
-};
 
+    <div
+      ref={mapRef}
+      id="map"
+      style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
+    />
+  </div>
+)
+}
 export default UserMap;
