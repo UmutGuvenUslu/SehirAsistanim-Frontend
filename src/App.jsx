@@ -1,10 +1,17 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom"; // Navigate de dahil
+import { Routes, Route, Navigate } from "react-router-dom";
 import UserMap from "./Components/UserMap";
 import Login from "./Components/Login";
 import Register from "./Components/Register";
 import AdminPanel from "./Components/AdminPanel";
 import NotFoundPage from "./Components/NotFoundPage";
+
+import Dashboard from "./Components/AdminPages/Dashboard";
+import UserManagement from "./Components/AdminPages/UserManagement";
+import AdminProfile from "./Components/AdminPages/AdminProfile";
+import DepartmentManagement from "./Components/AdminPages/DepartmentManagement";
+import ComplaintSolutions from "./Components/AdminPages/ComplaintSolutions";
+import ComplaintTypes from "./Components/AdminPages/ComplaintTypes";
 
 import "./App.css";
 import { ToastContainer } from "react-toastify";
@@ -65,7 +72,15 @@ function App() {
               <AdminPanel />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* Admin Panel alt sayfaları */}
+          <Route index element={<Dashboard />} /> {/* Varsayılan Dashboard */}
+          <Route path="profil" element={<AdminProfile />} />
+          <Route path="kullanicilar" element={<UserManagement />} />
+          <Route path="birimyonetimi" element={<DepartmentManagement />} />
+          <Route path="sikayetcozumleri" element={<ComplaintSolutions />} />
+          <Route path="sikayetturuyonetimi" element={<ComplaintTypes />} />
+        </Route>
 
         {/* 🚫 404 Sayfası */}
         <Route path="/404" element={<NotFoundPage />} />

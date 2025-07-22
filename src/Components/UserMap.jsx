@@ -353,22 +353,22 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       if (!kullaniciid) {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
-const body = {
-  KullaniciId: kullaniciid,    // token'dan çözdüğün id
-  Baslik: title,
-  Aciklama: description,       // Burada kesinlikle büyük A ile yazılmalı
-  SikayetTuruId: parseInt(category),  // kategori id, sayısal
-  Latitude: coords[1],         // enlem
-  Longitude: coords[0],        // boylam
-  FotoUrl: publicUrl,
-  GonderilmeTarihi: new Date().toISOString(),
-  CozulmeTarihi: null,
-  Durum: 0,
-  DogrulanmaSayisi: 0,
-  Silindimi: false,
-  CozenBirimId: null
-  // DuyguPuani gönderme, backend hesaplayacak
-};
+      const body = {
+        KullaniciId: kullaniciid,    // token'dan çözdüğün id
+        Baslik: title,
+        Aciklama: description,       // Burada kesinlikle büyük A ile yazılmalı
+        SikayetTuruId: parseInt(category),  // kategori id, sayısal
+        Latitude: coords[1],         // enlem
+        Longitude: coords[0],        // boylam
+        FotoUrl: publicUrl,
+        GonderilmeTarihi: new Date().toISOString(),
+        CozulmeTarihi: null,
+        Durum: 0,
+        DogrulanmaSayisi: 0,
+        Silindimi: false,
+        CozenBirimId: null
+        // DuyguPuani gönderme, backend hesaplayacak
+      };
       console.log("Gönderilecek body:", body);
 
       await axios.post(
@@ -409,190 +409,189 @@ const body = {
 
   const mapHeight = isMobile ? (isFormOpen ? "50vh" : "100vh") : "100vh";
 
- return (
-  <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-    {locationError && (
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+      {locationError && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(255, 69, 58, 0.9)",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: 5,
+            zIndex: 1000,
+            fontWeight: "bold",
+            fontSize: "14px",
+          }}
+        >
+          {locationError}
+        </div>
+      )}
+
+      <button
+        onClick={toggleForm}
+        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
+        aria-label="Şikayet formunu aç/kapa"
+        style={{ display: isFormOpen && isMobile ? "none" : "flex" }}
+      >
+        <span className="mr-2">Şikayet Oluştur</span>
+        <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
+      </button>
+
       <div
+        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${isMobile
+            ? "bottom-0 left-0 right-0 h-1/2"
+            : "right-6 bottom-16 w-[380px] max-h-[70vh]"
+          }`}
         style={{
-          position: "absolute",
-          top: 10,
-          left: "50%",
-          transform: "translateX(-50%)",
-          backgroundColor: "rgba(255, 69, 58, 0.9)",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: 5,
-          zIndex: 1000,
-          fontWeight: "bold",
-          fontSize: "14px",
+          transform: isMobile
+            ? isFormOpen
+              ? "translateY(0)"
+              : "translateY(100%)"
+            : isFormOpen
+              ? "translateY(0)"
+              : "translateY(100%)",
+          opacity: isFormOpen ? 1 : 0,
+          pointerEvents: isFormOpen ? "auto" : "none",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        {locationError}
-      </div>
-    )}
-
-    <button
-      onClick={toggleForm}
-      className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
-      aria-label="Şikayet formunu aç/kapa"
-      style={{ display: isFormOpen && isMobile ? "none" : "flex" }}
-    >
-      <span className="mr-2">Şikayet Oluştur</span>
-      <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
-    </button>
-
-    <div
-      className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
-        isMobile
-          ? "bottom-0 left-0 right-0 h-1/2"
-          : "right-6 bottom-16 w-[380px] max-h-[70vh]"
-      }`}
-      style={{
-        transform: isMobile
-          ? isFormOpen
-            ? "translateY(0)"
-            : "translateY(100%)"
-          : isFormOpen
-          ? "translateY(0)"
-          : "translateY(100%)",
-        opacity: isFormOpen ? 1 : 0,
-        pointerEvents: isFormOpen ? "auto" : "none",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div className="p-6 overflow-y-auto" style={{ flexGrow: 1, minHeight: 0 }}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Şikayet Formu</h2>
-          <button
-            onClick={toggleForm}
-            className="text-gray-500 hover:text-gray-700 text-lg"
-            aria-label="Formu kapat"
-          >
-            ✕
-          </button>
-        </div>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Başlık</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Açıklama</label>
-            <textarea
-              rows="4"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Kategori</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-              required
+        <div className="p-6 overflow-y-auto" style={{ flexGrow: 1, minHeight: 0 }}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Şikayet Formu</h2>
+            <button
+              onClick={toggleForm}
+              className="text-gray-500 hover:text-gray-700 text-lg"
+              aria-label="Formu kapat"
             >
-              <option>Çevre Kirliliği</option>
-              <option>Altyapı</option>
-              <option>Ulaşım</option>
-              <option>Diğer</option>
-            </select>
+              ✕
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Konum</label>
-            <input
-              type="text"
-              value={address || "Konum seçiniz"}
-              readOnly
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-gray-100 cursor-not-allowed"
-            />
-          </div>
-
-          {/* Dosya yükleme alanı - burası yenilendi */}
-          <div className="text-center">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fotoğraf Yükle
-            </label>
-            <input
-  id="file-upload"
-  type="file"
-  accept="image/*"
-  multiple
-  capture={isMobile ? undefined : "environment"}
-  onChange={(e) => {
-    const files = Array.from(e.target.files);
-    setPhotos(files);
-  }}
-  className="hidden"
-  ref={fileInputRef}
-/>
-            <div className="flex flex-row items-center justify-center">
-              <label
-                htmlFor="file-upload"
-                className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
-              >
-                Fotoğraf Seç veya Kamera Aç
-              </label>
-
-              {photos.length > 0 && (
-  <div className="mt-4 flex flex-wrap gap-2 justify-center">
-    {photos.map((file, index) => {
-      const objectUrl = URL.createObjectURL(file);
-      return (
-        <div key={index} className="relative w-20 h-20 rounded overflow-hidden border border-gray-300">
-          <img
-            src={objectUrl}
-            alt={`Fotoğraf önizleme ${index + 1}`}
-            className="w-full h-full object-cover"
-            onLoad={() => URL.revokeObjectURL(objectUrl)} // Bellek sızıntısını önlemek için
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setPhotos((prev) => prev.filter((_, i) => i !== index));
-            }}
-            aria-label="Fotoğrafı sil"
-            className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1.5 hover:bg-red-700"
-          >
-            ×
-          </button>
-        </div>
-      );
-    })}
-  </div>
-)}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Başlık</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                required
+              />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isUploading}
-            className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
-          >
-            {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Açıklama</label>
+              <textarea
+                rows="4"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Kategori</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                required
+              >
+                <option value="1">Çevre Kirliliği</option>
+                <option value="2">Altyapı</option>
+                <option value="3">Ulaşım</option>
+                <option value="4">Diğer</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Konum</label>
+              <input
+                type="text"
+                value={address || "Konum seçiniz"}
+                readOnly
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Dosya yükleme alanı - burası yenilendi */}
+            <div className="text-center">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fotoğraf Yükle
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                capture={isMobile ? undefined : "environment"}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
+                  setPhotos(files);
+                }}
+                className="hidden"
+                ref={fileInputRef}
+              />
+              <div className="flex flex-row items-center justify-center">
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
+                >
+                  Fotoğraf Seç veya Kamera Aç
+                </label>
+
+                {photos.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    {photos.map((file, index) => {
+                      const objectUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="relative w-20 h-20 rounded overflow-hidden border border-gray-300">
+                          <img
+                            src={objectUrl}
+                            alt={`Fotoğraf önizleme ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onLoad={() => URL.revokeObjectURL(objectUrl)} // Bellek sızıntısını önlemek için
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPhotos((prev) => prev.filter((_, i) => i !== index));
+                            }}
+                            aria-label="Fotoğrafı sil"
+                            className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1.5 hover:bg-red-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUploading}
+              className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
+            >
+              {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
 
-    <div
-      ref={mapRef}
-      id="map"
-      style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
-    />
-  </div>
-)
+      <div
+        ref={mapRef}
+        id="map"
+        style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
+      />
+    </div>
+  )
 }
 export default UserMap;

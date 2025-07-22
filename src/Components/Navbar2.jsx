@@ -51,12 +51,12 @@ function Navbar2() {
             >
               <div className="bg-orange-500/20 rounded-lg backdrop-blur-sm px-4 py-3 w-full">
                 <div className="flex flex-col items-center gap-3">
-                  <Link to="/girisyap" className="text-black hover:text-gray-700 transition">
+                  <Link to="/login" className="text-black hover:text-gray-700 transition">
                     Giriş Yap
                   </Link>
-                   <Link to="/kayitol" className="text-black hover:underline">
-              Kayıt Ol
-            </Link>
+                  <Link to="/register" className="text-black hover:text-gray-700 transition">
+                    Kayıt Ol
+                  </Link>
                 </div>
               </div>
             </div>
