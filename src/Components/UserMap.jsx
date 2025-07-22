@@ -11,12 +11,15 @@ import VectorSource from "ol/source/Vector";
 import VectorLayer from "ol/layer/Vector";
 import { Icon, Style } from "ol/style";
 import Translate from "ol/interaction/Translate";
+import Overlay from "ol/Overlay";
 import { defaults as defaultControls } from "ol/control";
+import axios from "axios";
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const mapRef = useRef();
   const mapObjRef = useRef(null);
-  const vectorSourceRef = useRef(null);
+  const vectorSourceRef = useRef(null);           // Şikayet markerları
+  const userMarkerSourceRef = useRef(null);       // Kullanıcı markerı
   const [locationError, setLocationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -27,8 +30,16 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [category, setCategory] = useState("Çevre Kirliliği");
   const [photos, setPhotos] = useState([]);
   const [coords, setCoords] = useState([null, null]);
-  const [address, setAddress] = useState(""); // Yeni state: adres metni
+  const [address, setAddress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+
+  // Popup refs & state
+  const popupRef = useRef(null);
+  const overlayRef = useRef(null);
+  const translateInteractionRef = useRef(null);
+
+  // Popup bilgilerini state’de tutuyoruz (React için)
+  const [popupInfo, setPopupInfo] = useState(null);
 
   // Mobil kontrolü
   useEffect(() => {
@@ -63,25 +74,106 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   // Harita ve marker kurulum
   useEffect(() => {
     const turkeyCenter = fromLonLat([35.2433, 38.9637]);
-    const vectorSource = new VectorSource();
-    vectorSourceRef.current = vectorSource;
-    const vectorLayer = new VectorLayer({ source: vectorSource });
+
+    const complaintSource = new VectorSource(); // Şikayetler
+    const userMarkerSource = new VectorSource(); // Kullanıcı markerı
+
+    vectorSourceRef.current = complaintSource;
+    userMarkerSourceRef.current = userMarkerSource;
+
+    const complaintLayer = new VectorLayer({ source: complaintSource });
+    const userMarkerLayer = new VectorLayer({ source: userMarkerSource });
+
     const map = new Map({
       target: mapRef.current,
       layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-        vectorLayer,
+        new TileLayer({ source: new OSM() }),
+        complaintLayer,
+        userMarkerLayer,
       ],
-      view: new View({
-        center: turkeyCenter,
-        zoom: 7,
-      }),
+      view: new View({ center: turkeyCenter, zoom: 7 }),
       controls: defaultControls({ zoom: false, attribution: false }),
     });
+
     mapObjRef.current = map;
 
+    // ** Popup Overlay oluşturma ve haritaya ekleme (bir kere) **
+    const popupDiv = document.createElement("div");
+    popupDiv.className = "ol-popup";
+    popupDiv.style.position = "absolute";
+    popupDiv.style.backgroundColor = "white";
+    popupDiv.style.padding = "10px";
+    popupDiv.style.borderRadius = "8px";
+    popupDiv.style.minWidth = "200px";
+    popupDiv.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
+    popupDiv.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+    popupDiv.style.opacity = "0";
+    popupDiv.style.transform = "translateY(10px)";
+    popupRef.current = popupDiv;
+
+    const overlay = new Overlay({
+      element: popupDiv,
+      autoPan: { animation: { duration: 250 } },
+      positioning: "bottom-center",
+      stopEvent: true,
+    });
+
+    overlayRef.current = overlay;
+    map.addOverlay(overlay);
+
+    // Harita üzerinde tek tıklama ile popup açma/kapatma
+    map.on("singleclick", (evt) => {
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+
+      if (feature && feature.get("complaintData")) {
+        const coord = feature.getGeometry().getCoordinates();
+        overlay.setPosition(coord);
+
+        const data = feature.get("complaintData");
+        // Popup içeriğini güncelle
+        popupDiv.innerHTML = `
+          <h3 style="margin:0 0 8px 0;">${data.baslik || "Başlık Yok"}</h3>
+          <p style="margin:0 0 4px 0;">${data.aciklama || "Açıklama Yok"}</p>
+          <p style="font-size:12px; color:gray; margin:0;">Kategori: ${data.kategori || "-"}</p>
+          <button id="popup-close-btn" style="
+            margin-top:8px; 
+            padding:4px 8px; 
+            background:#f97316; 
+            color:white; 
+            border:none; 
+            border-radius:4px; 
+            cursor:pointer;
+          ">Kapat</button>
+        `;
+
+        // Popup animasyon açma
+        setTimeout(() => {
+          popupDiv.style.opacity = "1";
+          popupDiv.style.transform = "translateY(0)";
+        }, 10);
+
+        // Kapatma butonu işlevi
+        popupDiv.querySelector("#popup-close-btn").onclick = () => {
+          popupDiv.style.opacity = "0";
+          popupDiv.style.transform = "translateY(10px)";
+          setTimeout(() => {
+            overlay.setPosition(undefined);
+          }, 300);
+        };
+
+        setPopupInfo(data);
+      } else {
+        // Popup kapat
+        popupDiv.style.opacity = "0";
+        popupDiv.style.transform = "translateY(10px)";
+        setTimeout(() => {
+          overlay.setPosition(undefined);
+        }, 300);
+        setPopupInfo(null);
+      }
+    });
+
+    // Kullanıcının konumu
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -94,16 +186,14 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             map.getView().animate({ center: userCoord, zoom: 14 });
             onCoordinateSelect?.([lon, lat]);
             setCoords([lon, lat]);
-            fetchAddress(lon, lat); // Adresi çekiyoruz
+            fetchAddress(lon, lat);
           }
 
           setLocationError("");
         },
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
-            setLocationError(
-              "Konum izni verilmedi. Lütfen tarayıcı ayarlarından konum izinlerini açınız."
-            );
+            setLocationError("Konum izni verilmedi. Tarayıcı ayarlarını kontrol edin.");
           } else {
             setLocationError("Konum alınamadı, lütfen tekrar deneyiniz.");
           }
@@ -116,49 +206,53 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     return () => map.setTarget(null);
   }, []);
 
-  // Marker ekleme ve taşıma
+  // Kullanıcı markerı ekleme ve taşıma etkileşimi
   const addDraggableMarker = (coord) => {
-    if (!vectorSourceRef.current || !mapObjRef.current) return;
+    if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
-    vectorSourceRef.current.clear();
+    userMarkerSourceRef.current.clear();
 
-    const markerStyle = new Style({
-      image: new Icon({
-        anchor: [0.5, 1],
-        src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-        scale: 0.05,
-      }),
-    });
+    const marker = new Feature({ geometry: new Point(coord) });
 
-    const marker = new Feature({
-      geometry: new Point(coord),
-    });
-    marker.setStyle(markerStyle);
-    vectorSourceRef.current.addFeature(marker);
+    marker.setStyle(
+      new Style({
+        image: new Icon({
+          anchor: [0.5, 1],
+          src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+          scale: 0.05,
+        }),
+      })
+    );
 
-    // Önce varsa translate etkileşimini kaldır
-    mapObjRef.current.getInteractions().forEach((interaction) => {
-      if (interaction instanceof Translate) {
-        mapObjRef.current.removeInteraction(interaction);
+    userMarkerSourceRef.current.addFeature(marker);
+
+    // Önceki translate etkileşimini kaldır
+    if (translateInteractionRef.current) {
+      mapObjRef.current.removeInteraction(translateInteractionRef.current);
+      translateInteractionRef.current = null;
+    }
+
+    // Yalnızca userMarkerSource'daki feature'ları taşınabilir yap
+    const translate = new Translate({
+      features: userMarkerSourceRef.current.getFeaturesCollection(),
+      filter: function(feature, layer) {
+        return userMarkerSourceRef.current.getFeatures().includes(feature);
       }
     });
 
-    // Yeni translate etkileşimi ekle
-    const translate = new Translate({
-      features: vectorSourceRef.current.getFeaturesCollection(),
-    });
     mapObjRef.current.addInteraction(translate);
+    translateInteractionRef.current = translate;
 
     translate.on("translateend", (e) => {
       const geom = e.features.item(0).getGeometry();
       const newCoord = toLonLat(geom.getCoordinates());
       onCoordinateSelect?.(newCoord);
       setCoords(newCoord);
-      fetchAddress(newCoord[0], newCoord[1]); // İşaretçi hareketinde adres güncelle
+      fetchAddress(newCoord[0], newCoord[1]);
     });
   };
 
-  // selectedCoordinate değişince marker ve adres güncelle
+  // selectedCoordinate değişince marker ekle
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -169,18 +263,55 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  // Form toggle
+  // Şikayetleri backend’den çekip marker olarak ekleme
+  useEffect(() => {
+    if (!vectorSourceRef.current) return;
+
+    const token = localStorage.getItem("token");
+
+    axios
+      .get("https://sehirasistanim-backend-production.up.railway.app/Sikayet/GetAll", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const data = res.data;
+        vectorSourceRef.current.clear();
+
+        data.forEach((item) => {
+          if (!item.latitude || !item.longitude) return;
+
+          const coord = fromLonLat([item.longitude, item.latitude]);
+
+          const feature = new Feature({
+            geometry: new Point(coord),
+            complaintData: item,
+          });
+
+          feature.setStyle(
+            new Style({
+              image: new Icon({
+                anchor: [0.5, 1],
+                src: "https://cdn-icons-png.flaticon.com/512/502/502007.png",
+                scale: 0.05,
+              }),
+            })
+          );
+
+          vectorSourceRef.current.addFeature(feature);
+        });
+      })
+      .catch((error) => {
+        console.error("Şikayetler yüklenemedi:", error);
+        if (error.response?.status === 401) {
+          setLocationError("Yetkisiz erişim. Lütfen giriş yapınız.");
+        }
+      });
+  }, []);
+
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
-  // Fotoğraf değişimi
-  const handlePhotoChange = (e) => {
-    const files = Array.from(e.target.files);
-    setPhotos(files);
-  };
-
-  // Form gönderme
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsUploading(true);
@@ -198,12 +329,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }, 2000);
   };
 
-  // **Harita yüksekliği form açık/kapalı durumuna ve cihaz tipine göre**
-  const mapHeight = isMobile
-    ? isFormOpen
-      ? "50vh" // Form açıkken harita yüksekliği yarıya iner
-      : "100vh" // Kapalıyken tam yükseklik
-    : "100vh"; // PC'de hep tam yükseklik
+  const mapHeight = isMobile ? (isFormOpen ? "50vh" : "100vh") : "100vh";
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh" }}>
@@ -227,10 +353,9 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         </div>
       )}
 
-      {/* Şikayet Oluştur butonu */}
       <button
         onClick={toggleForm}
-        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30"
+        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
         aria-label="Şikayet formunu aç/kapa"
         style={{ display: isFormOpen && isMobile ? "none" : "flex" }}
       >
@@ -238,9 +363,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
       </button>
 
-      {/* Form container */}
       <div
-        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-transform duration-300 ease-in-out ${
+        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
           isMobile
             ? "bottom-0 left-0 right-0 h-1/2"
             : "right-6 bottom-16 w-[380px] max-h-[70vh]"
@@ -259,10 +383,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           flexDirection: "column",
         }}
       >
-        <div
-          className="p-6 overflow-y-auto"
-          style={{ flexGrow: 1, minHeight: 0 }}
-        >
+        <div className="p-6 overflow-y-auto" style={{ flexGrow: 1, minHeight: 0 }}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Şikayet Formu</h2>
             <button
@@ -274,11 +395,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             </button>
           </div>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Başlık */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Başlık
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Başlık</label>
               <input
                 type="text"
                 value={title}
@@ -288,11 +406,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
-            {/* Açıklama */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Açıklama
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Açıklama</label>
               <textarea
                 rows="4"
                 value={description}
@@ -302,11 +417,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
-            {/* Kategori */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Kategori
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Kategori</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -320,11 +432,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               </select>
             </div>
 
-            {/* Adres gösterimi */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Konum
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Konum</label>
               <input
                 type="text"
                 value={address || "Konum seçiniz"}
@@ -333,127 +442,72 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </div>
 
-            {/* Fotoğraf yükleme */}
             <div className="text-center">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Fotoğraf Yükle
               </label>
-
               <input
                 id="file-upload"
                 type="file"
                 accept="image/*"
                 multiple
-                capture={isMobile ? undefined : "environment"} // Mobilde galeriden/kamera seçilir
-                onChange={handlePhotoChange}
+                capture={isMobile ? undefined : "environment"}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
+                  setPhotos(files);
+                }}
                 className="hidden"
               />
               <div className="flex flex-row items-center justify-center">
-              <label
-                htmlFor="file-upload"
-                className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
-              >
-                Fotoğraf Seç veya Kamera Aç
-              </label>
-
-              {/* Temizle butonu: çöp kutusu ikonu ve yükle butonuyla yan yana */}
-              {photos.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPhotos([])}
-                  aria-label="Seçilen fotoğrafları temizle"
-                  className="ml-2  inline-flex items-center justify-center rounded-md bg-red-500 hover:bg-red-600 text-white p-2"
-                  style={{ height: "40px"}}
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+                  Fotoğraf Seç veya Kamera Aç
+                </label>
+
+                {photos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPhotos([])}
+                    aria-label="Seçilen fotoğrafları temizle"
+                    className="ml-2  inline-flex items-center justify-center rounded-md bg-red-500 hover:bg-red-600 text-white p-2"
+                    style={{ height: "40px" }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19 7L5 7M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
-                    />
-                  </svg>
-                </button>
-              )}
-                </div>
-              {/* Fotoğraf önizleme */}
-              {photos.length > 0 && (
-                <div className="mt-2 justify-center flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {photos.map((file, i) => {
-                    const url = URL.createObjectURL(file);
-                    return (
-                      <img
-                        key={i}
-                        src={url}
-                        alt={`Seçilen fotoğraf ${i + 1}`}
-                        className="w-16 h-16 object-cover rounded-md border border-gray-300"
-                        onLoad={() => URL.revokeObjectURL(url)}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 7L5 7M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
                       />
-                    );
-                  })}
-                </div>
-              )}
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Yükleniyor göstergesi */}
-            {isUploading && (
-              <div className="flex items-center justify-center space-x-2 text-orange-600 font-semibold mt-2">
-                <svg
-                  className="animate-spin h-5 w-5 text-orange-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
-                </svg>
-                <span>Yükleniyor...</span>
-              </div>
-            )}
-
-            {/* Gönder butonu */}
             <button
               type="submit"
               disabled={isUploading}
-              className={`w-full mt-4 py-2 px-4 rounded font-bold text-white ${
-                isUploading
-                  ? "bg-orange-300 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600"
-              }`}
+              className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
-              Gönder
+              {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
             </button>
           </form>
         </div>
       </div>
 
-      {/* Harita */}
       <div
         ref={mapRef}
-        style={{
-          width: "100%",
-          height: mapHeight, // Dinamik yükseklik (mobilde form açıkken küçülür)
-          borderRadius: "8px",
-          overflow: "hidden",
-          transition: "height 0.5s ease", // Yumuşak geçiş
-        }}
+        id="map"
+        style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
       />
     </div>
   );
