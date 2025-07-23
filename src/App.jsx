@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect, useContext } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import UserMap from "./Components/UserMap";
 import Login from "./Components/Login";
 import Register from "./Components/Register";
@@ -19,8 +19,8 @@ import "react-toastify/dist/ReactToastify.css";
 
 import AuthLayout from "./Layouts/AuthLayout";
 import MainLayout from "./Layouts/MainLayout";
+import { AuthContext } from "./Context/AuthContext"; // 🔁 Yol sana göre değişebilir
 
-// 🔒 ProtectedRoute (JWT decode ile rol kontrolü)
 function ProtectedRoute({ children, requiredRole }) {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/404" />;
@@ -50,21 +50,42 @@ function ProtectedRoute({ children, requiredRole }) {
 }
 
 function App() {
+  const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const expiry = localStorage.getItem("tokenExpiry");
+
+    if (token && expiry) {
+      const expiryTime = parseInt(expiry, 10);
+      const now = Date.now();
+
+      if (now >= expiryTime) {
+        logout();
+      } else {
+        const remaining = expiryTime - now;
+        const timeoutId = setTimeout(() => {
+          logout();
+        }, remaining);
+
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [logout]);
+
   return (
     <>
       <Routes>
-        {/* 🔐 Giriş ve Kayıt Sayfaları (AuthLayout içinde) */}
         <Route element={<AuthLayout />}>
           <Route path="/girisyap" element={<Login />} />
           <Route path="/kayitol" element={<Register />} />
         </Route>
 
-        {/* 🧭 Ana kullanıcı sayfaları (MainLayout içinde) */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<UserMap />} />
         </Route>
 
-        {/* 🛡️ Admin Panel (sadece Admin rolü erişebilir) */}
         <Route
           path="/adminpanel"
           element={
@@ -73,8 +94,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* Admin Panel alt sayfaları */}
-          <Route index element={<Dashboard />} /> {/* Varsayılan Dashboard */}
+          <Route index element={<Dashboard />} />
           <Route path="profil" element={<AdminProfile />} />
           <Route path="kullanicilar" element={<UserManagement />} />
           <Route path="birimyonetimi" element={<DepartmentManagement />} />
@@ -82,12 +102,10 @@ function App() {
           <Route path="sikayetturuyonetimi" element={<ComplaintTypes />} />
         </Route>
 
-        {/* 🚫 404 Sayfası */}
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="*" element={<Navigate to="/404" />} />
       </Routes>
 
-      {/* 🔔 Toast Bildirimleri */}
       <ToastContainer
         position="top-right"
         autoClose={3000}

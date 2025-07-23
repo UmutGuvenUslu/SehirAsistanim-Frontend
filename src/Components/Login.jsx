@@ -7,10 +7,9 @@ import axios from "axios";
 import photo from "./photo.jpg";
 import { toast } from "react-toastify";
 
-// Sadece email validasyonu, password için zorunluluk yok
 const schema = z.object({
   email: z.string().email("Geçerli bir email girin"),
-  password: z.string(), // Validasyon yok
+  password: z.string(),
 });
 
 export default function Login() {
@@ -45,7 +44,14 @@ export default function Login() {
       );
 
       if (response.data.token) {
+        const expiry = Date.now() + 60 * 60 * 1000; 
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("tokenExpiry", expiry.toString());
+
+        if (response.data.fullName) {
+          localStorage.setItem("userName", response.data.fullName);
+        }
+
         toast.success("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
         navigate("/");
       } else {
@@ -64,7 +70,6 @@ export default function Login() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">
-      {/* Sol tanıtım alanı */}
       <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-slate-500 to-zinc-900 text-white flex-col justify-center items-center px-10 py-12 space-y-6">
         <div className="max-w-md text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Şehir Asistanım</h1>
@@ -80,7 +85,6 @@ export default function Login() {
         />
       </div>
 
-      {/* Sağ form alanı */}
       <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12 min-h-screen">
         <div className="w-full max-w-md">
           <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">Giriş Yap</h2>
@@ -106,18 +110,7 @@ export default function Login() {
                 placeholder="Şifreniz"
                 className="w-full border border-gray-300 rounded px-3 py-2"
               />
-              {/* Password için hata mesajı yok çünkü validasyon yok */}
             </div>
-
-            {/*<div className="flex items-center justify-between text-sm">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" className="form-checkbox accent-orange-500" />
-                <span>Beni hatırla</span>
-              </label>
-              <a href="#" className="text-orange-500 hover:underline">
-                Şifremi unuttum?
-              </a>
-            </div>*/}
 
             {error && (
               <p className="text-red-600 text-center text-sm">{error}</p>
