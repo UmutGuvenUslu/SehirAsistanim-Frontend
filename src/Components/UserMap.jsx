@@ -13,6 +13,7 @@ import { Icon, Style } from "ol/style";
 import Translate from "ol/interaction/Translate";
 import Overlay from "ol/Overlay";
 import { defaults as defaultControls } from "ol/control";
+import { toast } from "react-toastify";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 
@@ -322,11 +323,11 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     e.preventDefault();
 
     if (photos.length === 0) {
-      alert("Lütfen en az bir fotoğraf seçin.");
+      toast.error("Lütfen en az bir fotoğraf seçin.");
       return;
     }
     if (!title || !description || !category || !coords[0] || !coords[1]) {
-      alert("Lütfen tüm alanları doldurun.");
+      toast.error("Lütfen tüm alanları doldurun.");
       return;
     }
 
@@ -382,7 +383,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         }
       );
 
-      alert("Şikayetiniz başarıyla gönderildi!");
+      toast.success("Şikayetiniz başarıyla gönderildi! 🎉");
 
       setTitle("");
       setDescription("");
@@ -394,13 +395,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     } catch (error) {
       if (error.response) {
         console.error("Backend hatası:", error.response.status, error.response.data);
-        alert(`Şikayet gönderilirken backend hatası: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+        toast.error(`Şikayet gönderilirken backend hatası: ${error.response.status}`);
       } else if (error.request) {
         console.error("İstek yapıldı, yanıt alınamadı:", error.request);
-        alert("Sunucudan yanıt alınamadı.");
+        toast.error("Sunucudan yanıt alınamadı.");
       } else {
         console.error("İstek ayarlarında hata:", error.message);
-        alert(`Hata: ${error.message}`);
+        toast.error(`Lütfen giriş yapınız!`);
       }
     } finally {
       setIsUploading(false);
@@ -443,8 +444,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
       <div
         className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${isMobile
-            ? "bottom-0 left-0 right-0 h-1/2"
-            : "right-6 bottom-16 w-[380px] max-h-[70vh]"
+          ? "bottom-0 left-0 right-0 h-1/2"
+          : "right-6 bottom-16 w-[380px] max-h-[70vh]"
           }`}
         style={{
           transform: isMobile

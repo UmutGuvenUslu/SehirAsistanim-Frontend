@@ -1,4 +1,7 @@
 import React, { createContext, useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+
 
 export const AuthContext = createContext();
 
@@ -25,7 +28,7 @@ const extractUserNameFromToken = (token) => {
 
 export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(() => localStorage.getItem("token"));
-    const [userName, setUserName] = useState(() => token ? extractUserNameFromToken(token) : null);
+    const [userName, setUserName] = useState(localStorage.getItem("userName"));
 
     useEffect(() => {
         setUserName(token ? extractUserNameFromToken(token) : null);
@@ -38,8 +41,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem("token");
+        localStorage.removeItem("userName");
         setToken(null);
+        setUserName(null);
+        toast.info("Çıkış yapıldı. Yine bekleriz! ");
+        navigate("/girisyap");
     };
+
 
     return (
         <AuthContext.Provider value={{ token, userName, login, logout }}>

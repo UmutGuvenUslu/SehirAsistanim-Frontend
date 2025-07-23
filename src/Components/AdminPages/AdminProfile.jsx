@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 import userImg from "../user.png"; // Profil resmi (mevcut resim)
 
 export default function AdminProfile() {
@@ -13,10 +14,10 @@ export default function AdminProfile() {
 
     const handleSavePassword = () => {
         if (!password || !newPassword) {
-            alert("Lütfen tüm alanları doldurun.");
+            toast.error("Lütfen tüm alanları doldurun.");
             return;
         }
-        alert("Şifre başarıyla güncellendi! (Backend entegrasyonu eklenebilir.)");
+        toast.success("Şifre başarıyla güncellendi! 🔐 (Backend entegrasyonu eklenebilir.)");
         setPassword("");
         setNewPassword("");
     };
