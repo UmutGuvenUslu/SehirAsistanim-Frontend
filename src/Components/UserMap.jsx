@@ -34,7 +34,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("1"); // string olarak başlangıç
+  const [category, setCategory] = useState("1");
   const [photos, setPhotos] = useState([]);
   const [coords, setCoords] = useState([null, null]);
   const [address, setAddress] = useState("");
@@ -45,6 +45,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const translateInteractionRef = useRef(null);
   const [popupInfo, setPopupInfo] = useState(null);
 
+  // Token'dan kullanıcı ID'si çözümler
   const getUserIdFromToken = (token) => {
     try {
       if (!token) return null;
@@ -73,6 +74,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
+  // Mobil mi masaüstü mü kontrolü
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -84,6 +86,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     };
   }, []);
 
+  // Enlem-boylamdan adres alır
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -97,6 +100,52 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
+  // Şikayetleri haritaya yükleyen fonksiyon
+  const loadComplaints = () => {
+    const token = localStorage.getItem("token");
+
+    if (!vectorSourceRef.current) return;
+
+    axios
+      .get("https://sehirasistanim-backend-production.up.railway.app/Sikayet/GetAll", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const data = res.data;
+        vectorSourceRef.current.clear();
+
+        data.forEach((item) => {
+          if (!item.latitude || !item.longitude) return;
+
+          const coord = fromLonLat([item.longitude, item.latitude]);
+
+          const feature = new Feature({
+            geometry: new Point(coord),
+            complaintData: item,
+          });
+
+          feature.setStyle(
+            new Style({
+              image: new Icon({
+                anchor: [0.5, 1],
+                src: "https://cdn-icons-png.flaticon.com/512/502/502007.png",
+                scale: 0.05,
+              }),
+            })
+          );
+
+          vectorSourceRef.current.addFeature(feature);
+        });
+      })
+      .catch((error) => {
+        console.error("Şikayetler yüklenemedi:", error);
+        if (error.response?.status === 401) {
+          setLocationError("Yetkisiz erişim. Lütfen giriş yapınız.");
+        }
+      });
+  };
+
+  // Harita ve marker kurulumu
   useEffect(() => {
     const turkeyCenter = fromLonLat([35.2433, 38.9637]);
 
@@ -118,6 +167,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
     mapObjRef.current = map;
 
+    // Popup yapılandırması
     const popupDiv = document.createElement("div");
     popupDiv.className = "ol-popup";
     popupDiv.style.position = "absolute";
@@ -141,6 +191,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
+    // Harita tek tık olayı
     map.on("singleclick", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
 
@@ -188,6 +239,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       }
     });
 
+    // Kullanıcının mevcut konumu
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -217,9 +269,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       setLocationError("Tarayıcınız konum servislerini desteklemiyor.");
     }
 
+    loadComplaints();
+
     return () => map.setTarget(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Marker ekleme ve sürüklenebilir yapma
   const addDraggableMarker = (coord) => {
     if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
@@ -261,6 +317,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     });
   };
 
+  // selectedCoordinate dışardan geldiğinde marker güncelle
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -271,54 +328,12 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  useEffect(() => {
-    if (!vectorSourceRef.current) return;
-
-    const token = localStorage.getItem("token");
-
-    axios
-      .get("https://sehirasistanim-backend-production.up.railway.app/Sikayet/GetAll", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        const data = res.data;
-        vectorSourceRef.current.clear();
-
-        data.forEach((item) => {
-          if (!item.latitude || !item.longitude) return;
-
-          const coord = fromLonLat([item.longitude, item.latitude]);
-
-          const feature = new Feature({
-            geometry: new Point(coord),
-            complaintData: item,
-          });
-
-          feature.setStyle(
-            new Style({
-              image: new Icon({
-                anchor: [0.5, 1],
-                src: "https://cdn-icons-png.flaticon.com/512/502/502007.png",
-                scale: 0.05,
-              }),
-            })
-          );
-
-          vectorSourceRef.current.addFeature(feature);
-        });
-      })
-      .catch((error) => {
-        console.error("Şikayetler yüklenemedi:", error);
-        if (error.response?.status === 401) {
-          setLocationError("Yetkisiz erişim. Lütfen giriş yapınız.");
-        }
-      });
-  }, []);
-
+  // Form aç/kapa
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
+  // Form submit (şikayet gönderme)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -355,21 +370,21 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
       const body = {
-        KullaniciId: kullaniciid,    // token'dan çözdüğün id
+        KullaniciId: kullaniciid,
         Baslik: title,
-        Aciklama: description,       // Burada kesinlikle büyük A ile yazılmalı
-        SikayetTuruId: parseInt(category),  // kategori id, sayısal
-        Latitude: coords[1],         // enlem
-        Longitude: coords[0],        // boylam
+        Aciklama: description,
+        SikayetTuruId: parseInt(category),
+        Latitude: coords[1],
+        Longitude: coords[0],
         FotoUrl: publicUrl,
         GonderilmeTarihi: new Date().toISOString(),
         CozulmeTarihi: null,
         Durum: 0,
         DogrulanmaSayisi: 0,
         Silindimi: false,
-        CozenBirimId: null
-        // DuyguPuani gönderme, backend hesaplayacak
+        CozenBirimId: null,
       };
+
       console.log("Gönderilecek body:", body);
 
       await axios.post(
@@ -385,6 +400,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
       toast.success("Şikayetiniz başarıyla gönderildi! 🎉");
 
+      // Form sıfırlama
       setTitle("");
       setDescription("");
       setCategory("1");
@@ -392,6 +408,9 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       setIsFormOpen(false);
       setAddress("");
       setCoords([null, null]);
+
+      // Haritayı şikayetlerle güncelle
+      loadComplaints();
     } catch (error) {
       if (error.response) {
         console.error("Backend hatası:", error.response.status, error.response.data);
@@ -443,18 +462,11 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       </button>
 
       <div
-        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${isMobile
-          ? "bottom-0 left-0 right-0 h-1/2"
-          : "right-6 bottom-16 w-[380px] max-h-[70vh]"
-          }`}
+        className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
+          isMobile ? "bottom-0 left-0 right-0 h-1/2" : "right-6 bottom-16 w-[380px] max-h-[70vh]"
+        }`}
         style={{
-          transform: isMobile
-            ? isFormOpen
-              ? "translateY(0)"
-              : "translateY(100%)"
-            : isFormOpen
-              ? "translateY(0)"
-              : "translateY(100%)",
+          transform: isFormOpen ? "translateY(0)" : "translateY(100%)",
           opacity: isFormOpen ? 1 : 0,
           pointerEvents: isFormOpen ? "auto" : "none",
           display: "flex",
@@ -469,119 +481,124 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               className="text-gray-500 hover:text-gray-700 text-lg"
               aria-label="Formu kapat"
             >
-              ✕
+              ×
             </button>
           </div>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Başlık</label>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block">
+              <span className="font-semibold">Başlık</span>
               <input
                 type="text"
+                className="w-full mt-1 p-2 border rounded"
+                placeholder="Başlık giriniz"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                 required
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Açıklama</label>
+            <label className="block">
+              <span className="font-semibold">Açıklama</span>
               <textarea
-                rows="4"
+                className="w-full mt-1 p-2 border rounded resize-none"
+                placeholder="Açıklama giriniz"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                 required
+                rows={3}
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Kategori</label>
+            <label className="block">
+              <span className="font-semibold">Kategori</span>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                className="w-full mt-1 p-2 border rounded"
                 required
               >
-                <option value="1">Çevre Kirliliği</option>
+                <option value="1">Çevre</option>
                 <option value="2">Altyapı</option>
                 <option value="3">Ulaşım</option>
-                <option value="4">Diğer</option>
+                <option value="4">Sağlık</option>
+                <option value="5">Diğer</option>
               </select>
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Konum</label>
+           <label className="block">
+  <span className="font-semibold mb-1 block">Fotoğraf</span>
+
+  {/* Gizli input */}
+  <input
+    type="file"
+    ref={fileInputRef}
+    onChange={(e) => setPhotos(Array.from(e.target.files))}
+    accept="image/*"
+    multiple
+    className="hidden"
+  />
+
+  {/* Görünen buton */}
+  <button
+    type="button"
+    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+    className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
+  >
+    Fotoğraf Seç veya Kamera Aç
+  </button>
+
+  {/* Önizleme alanı */}
+  {photos.length > 0 && (
+    <div className="mt-3 flex flex-wrap gap-2 max-h-32 overflow-auto">
+      {photos.map((file, idx) => {
+        const url = URL.createObjectURL(file);
+        return (
+          <div key={idx} className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-300">
+            <img
+              src={url}
+              alt={`Seçilen fotoğraf ${idx + 1}`}
+              className="object-cover w-full h-full"
+              onLoad={() => URL.revokeObjectURL(url)} // Bellek sızıntısını önlemek için
+            />
+            <button
+  type="button"
+  aria-label="Fotoğrafı sil"
+  className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1 hover:bg-red-700"
+  onClick={(e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+  }}
+>
+  ×
+</button>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</label>
+
+            <label className="block">
+              <span className="font-semibold">Seçilen Adres</span>
               <input
                 type="text"
-                value={address || "Konum seçiniz"}
+                className="w-full mt-1 p-2 border rounded bg-gray-100"
+                value={address}
                 readOnly
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-gray-100 cursor-not-allowed"
+                placeholder="Adres yok"
               />
-            </div>
-
-            {/* Dosya yükleme alanı - burası yenilendi */}
-            <div className="text-center">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fotoğraf Yükle
-              </label>
-              <input
-                id="file-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                capture={isMobile ? undefined : "environment"}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files);
-                  setPhotos(files);
-                }}
-                className="hidden"
-                ref={fileInputRef}
-              />
-              <div className="flex flex-row items-center justify-center">
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex items-center cursor-pointer rounded-md bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 select-none"
-                >
-                  Fotoğraf Seç veya Kamera Aç
-                </label>
-
-                {photos.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {photos.map((file, index) => {
-                      const objectUrl = URL.createObjectURL(file);
-                      return (
-                        <div key={index} className="relative w-20 h-20 rounded overflow-hidden border border-gray-300">
-                          <img
-                            src={objectUrl}
-                            alt={`Fotoğraf önizleme ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onLoad={() => URL.revokeObjectURL(objectUrl)} // Bellek sızıntısını önlemek için
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPhotos((prev) => prev.filter((_, i) => i !== index));
-                            }}
-                            aria-label="Fotoğrafı sil"
-                            className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1.5 hover:bg-red-700"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+            </label>
 
             <button
               type="submit"
               disabled={isUploading}
-              className="mt-4 w-full rounded-md bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className={`w-full py-3 rounded text-white font-semibold ${
+                isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+              }`}
             >
-              {isUploading ? "Gönderiliyor..." : "Şikayeti Gönder"}
+              {isUploading ? "Gönderiliyor..." : "Şikayet Gönder"}
             </button>
           </form>
         </div>
@@ -589,10 +606,17 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
       <div
         ref={mapRef}
-        id="map"
-        style={{ width: "100%", height: mapHeight, transition: "height 0.3s ease" }}
+        style={{
+          width: "100%",
+          height: mapHeight,
+          transition: "height 0.3s ease",
+          userSelect: "none",
+        }}
+        aria-label="Şikayet haritası"
+        role="application"
       />
     </div>
-  )
-}
+  );
+};
+
 export default UserMap;
