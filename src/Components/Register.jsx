@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // useNavigate eklendi
 import Modal from "./Modal";
 import axios from "axios";
 import photo from "./photo.jpg";
@@ -82,6 +82,8 @@ export default function Register() {
   const [loadingSubmit, setLoadingSubmit] = useState(false); // Kod gönderme için
   const [loadingVerify, setLoadingVerify] = useState(false); // Doğrulama için
 
+  const navigate = useNavigate(); // useNavigate hook'u
+
   const {
     register,
     handleSubmit,
@@ -121,7 +123,6 @@ export default function Register() {
     } finally {
        setLoadingSubmit(false); // İşlem bitti
     }
-
   };
 
   const handleVerifyAndRegister = async () => {
@@ -136,6 +137,10 @@ export default function Register() {
       );
       toast.success("Kayıt başarılı: " + response.data.message);
       setShowModal(false);
+
+      // Kayıt başarılıysa giriş sayfasına yönlendir
+      navigate("/girisyap");
+
     } catch (err) {
       toast.error("Kayıt başarısız: " + err.response?.data?.message);
     } finally {
