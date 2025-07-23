@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import UserMap from "./Components/UserMap";
 import Login from "./Components/Login";
 import Register from "./Components/Register";
-import AdminPanel from "./Components/AdminPanel";
+import AdminPanel from "./Components/AdminPages/AdminPanel";
 import NotFoundPage from "./Components/NotFoundPage";
 
 import Dashboard from "./Components/AdminPages/Dashboard";
