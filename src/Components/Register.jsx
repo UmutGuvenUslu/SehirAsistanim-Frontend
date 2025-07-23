@@ -11,6 +11,20 @@ import { toast } from "react-toastify";
 // Bugünkü tarih (gelecek tarih seçimini engellemek için)
 const today = new Date().toISOString().split("T")[0];
 
+//Özel TC Validasyonu
+const isValidTCKN = (tc) => {
+  if (!/^[1-9][0-9]{10}$/.test(tc)) return false;
+
+  const digits = tc.split("").map(Number);
+  const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+  const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+
+  const digit10 = ((oddSum * 7) - evenSum) % 10;
+  const digit11 = digits.slice(0, 10).reduce((a, b) => a + b, 0) % 10;
+
+  return digit10 === digits[9] && digit11 === digits[10];
+};
+
 // Zod validasyon şeması
 const schema = z
   .object({
@@ -23,7 +37,11 @@ const schema = z
       .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ]+$/, "Soyisim yalnızca harflerden oluşmalı"),
 
     TC: z.string()
-      .regex(/^[0-9]{11}$/, "TC yalnızca 11 haneli rakamlardan oluşmalı"),
+      .length(11, "TC Kimlik numarası 11 haneli olmalı")
+      .regex(/^[0-9]+$/, "TC Kimlik numarası sadece rakamlardan oluşmalı")
+      .refine(isValidTCKN, {
+        message: "Geçersiz TC Kimlik numarası",
+      }),
 
     Email: z.string().email("Geçerli email girin"),
 
