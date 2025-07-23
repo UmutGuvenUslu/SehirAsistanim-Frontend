@@ -179,6 +179,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     popupDiv.style.transition = "opacity 0.3s ease, transform 0.3s ease";
     popupDiv.style.opacity = "0";
     popupDiv.style.transform = "translateY(10px)";
+    popupDiv.style.textAlign = "center"
     popupRef.current = popupDiv;
 
     const overlay = new Overlay({
@@ -201,19 +202,84 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
         const data = feature.get("complaintData");
         popupDiv.innerHTML = `
-          <h3 style="margin:0 0 8px 0;">${data.baslik || "Başlık Yok"}</h3>
-          <p style="margin:0 0 4px 0;">${data.aciklama || "Açıklama Yok"}</p>
-          <p style="font-size:12px; color:gray; margin:0;">Kategori: ${data.kategori || "-"}</p>
-          <button id="popup-close-btn" style="
-            margin-top:8px; 
-            padding:4px 8px; 
-            background:#f97316; 
-            color:white; 
-            border:none; 
-            border-radius:4px; 
-            cursor:pointer;
-          ">Kapat</button>
-        `;
+  <div style="max-width: 260px; font-family: Arial, sans-serif;">
+
+    <img 
+      src="${data.fotoUrl || 'https://via.placeholder.com/260x140?text=Görsel+Yok'}" 
+      alt="Şikayet Görseli" 
+      style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-bottom: 10px;"
+    />
+
+    <h3 style="margin: 0 0 6px 0; font-weight: 700; font-size: 16px; color: #111;">
+      ${data.baslik || "Başlık Yok"}
+    </h3>
+
+    <p style="margin: 0 0 8px 0; font-size: 13px; color: #333;">
+      ${data.aciklama || "Açıklama Yok"}
+    </p>
+
+    <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">
+      <strong>Durum:</strong> ${data.durum || "-"}
+    </p>
+
+    <p style="margin: 0 0 12px 0; font-size: 12px; color: #555;">
+      <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
+    </p>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <button 
+        id="btn-issue-still" 
+        style="
+          flex: 1; 
+          padding: 6px 0; 
+          background-color: #dc2626; 
+          color: white; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 13px;
+        "
+      >
+        Sorun Hala Var
+      </button>
+
+      <button 
+        id="btn-issue-gone" 
+        style="
+          flex: 1; 
+          padding: 6px 0; 
+          background-color: #16a34a; 
+          color: white; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 13px;
+        "
+      >
+        Sorun Yok
+      </button>
+    </div>
+
+    <button 
+      id="popup-close-btn" 
+      style="
+        width: 100%;
+        padding: 8px 0;
+        background: #f97316; 
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 14px;
+      "
+    >
+      Kapat
+    </button>
+  </div>
+`;
 
         setTimeout(() => {
           popupDiv.style.opacity = "1";
