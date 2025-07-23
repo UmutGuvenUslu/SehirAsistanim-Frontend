@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import SearchBox from "./SearchBox";
 import { FaSearch, FaBars, FaTimes } from "react-icons/fa";
 import { AuthContext } from "../Context/AuthContext";
-import profilePic from "../assets/a.jpeg";
+import profilePic from "./user.png";
 
 export default function Navbar({ onSearchResult }) {
   const { token, userName = "Kullanıcı", logout } = useContext(AuthContext); // userName Context'ten alınıyor
@@ -67,7 +67,7 @@ export default function Navbar({ onSearchResult }) {
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-300 focus:outline-none"
+                  className="w-9 h-9 rounded-full overflow-hidden border-2 border-gray-300 focus:outline-none"
                   aria-label="Profil"
                 >
                   <img

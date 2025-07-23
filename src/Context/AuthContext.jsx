@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
     setToken(newToken);
     const decoded = parseJwt(newToken);
     localStorage.setItem("userName", extractUserNameFromToken(newToken));
+    setUserName(user);
   };
 
   const logout = () => {
