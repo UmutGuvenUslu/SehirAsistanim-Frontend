@@ -369,6 +369,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       if (!kullaniciid) {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
+       debugger;
       const body = {
         KullaniciId: kullaniciid,
         Baslik: title,
@@ -384,7 +385,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         Silindimi: false,
         CozenBirimId: null,
       };
-
+     
       console.log("Gönderilecek body:", body);
 
       await axios.post(
