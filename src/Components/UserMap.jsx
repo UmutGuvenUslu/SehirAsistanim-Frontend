@@ -39,11 +39,21 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [coords, setCoords] = useState([null, null]);
   const [address, setAddress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
+  const [Kategori,setKategori] = useState([]);
   const popupRef = useRef(null);
   const overlayRef = useRef(null);
   const translateInteractionRef = useRef(null);
   const [popupInfo, setPopupInfo] = useState(null);
+
+
+useEffect(() => {
+  axios.get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll")
+       .then(res => setKategori(res.data))
+       .catch(err => console.error("Kategori verisi alınamadı:", err));
+}, []);
+
+
+
 
   // Token'dan kullanıcı ID'si çözümler
   const getUserIdFromToken = (token) => {
@@ -202,84 +212,93 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
         const data = feature.get("complaintData");
         popupDiv.innerHTML = `
-  <div style="max-width: 260px; font-family: Arial, sans-serif;">
+  <button 
+    id="popup-close-btn" 
+    style="
+      position: absolute;
+      right: 4px;
+      background: #ef4444;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      padding-bottom: 5px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      transition: background 0.2s ease;
+    "
+    onmouseover="this.style.background='#dc2626'"
+    onmouseout="this.style.background='#ef4444'"
+  >×</button>
 
-    <img 
-      src="${data.fotoUrl || 'https://via.placeholder.com/260x140?text=Görsel+Yok'}" 
-      alt="Şikayet Görseli" 
-      style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-bottom: 10px;"
-    />
+  <img 
+    src="${data.fotoUrl || 'https://via.placeholder.com/220x120?text=Görsel+Yok'}" 
+    alt="Şikayet Görseli" 
+    style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;"
+  />
 
-    <h3 style="margin: 0 0 6px 0; font-weight: 700; font-size: 16px; color: #111;">
-      ${data.baslik || "Başlık Yok"}
-    </h3>
+  <h3 style="margin: 0 0 6px 0; font-weight: bold; font-size: 14px; color: #111;">
+    ${data.baslik || "Başlık Yok"}
+  </h3>
 
-    <p style="margin: 0 0 8px 0; font-size: 13px; color: #333;">
-      ${data.aciklama || "Açıklama Yok"}
-    </p>
+  <p style="margin: 0 0 6px 0; font-size: 12px; color: #444;">
+    ${data.aciklama || "Açıklama Yok"}
+  </p>
 
-    <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">
-      <strong>Durum:</strong> ${data.durum || "-"}
-    </p>
+  <p style="margin: 0 0 4px 0; font-size: 12px; color: #000;">
+    <strong>Durum:</strong> ${data.durum || "-"}
+  </p>
 
-    <p style="margin: 0 0 12px 0; font-size: 12px; color: #555;">
-      <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
-    </p>
+  <p style="margin: 0 0 8px 0; font-size: 12px; color: #000;">
+    <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
+  </p>
 
-    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-      <button 
-        id="btn-issue-still" 
-        style="
-          flex: 1; 
-          padding: 6px 0; 
-          background-color: #dc2626; 
-          color: white; 
-          border: none; 
-          border-radius: 5px; 
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 13px;
-        "
-      >
-        Sorun Hala Var
-      </button>
-
-      <button 
-        id="btn-issue-gone" 
-        style="
-          flex: 1; 
-          padding: 6px 0; 
-          background-color: #16a34a; 
-          color: white; 
-          border: none; 
-          border-radius: 5px; 
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 13px;
-        "
-      >
-        Sorun Yok
-      </button>
-    </div>
+  <div style="display: flex; justify-content: center; gap: 12px;">
+    <button 
+      id="btn-like" 
+      title="Sorun Çözüldü"
+      style="
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        border: 1.5px solid #16a34a;
+        background-color: #ecfdf5;
+        color: #16a34a;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      "
+      onmouseover="this.style.backgroundColor='#d1fae5'; this.style.boxShadow='0 0 6px #16a34a33'"
+      onmouseout="this.style.backgroundColor='#ecfdf5'; this.style.boxShadow='none'"
+    >👍</button>
 
     <button 
-      id="popup-close-btn" 
+      id="btn-dislike" 
+      title="Sorun Devam Ediyor"
       style="
-        width: 100%;
-        padding: 8px 0;
-        background: #f97316; 
-        color: white;
-        border: none;
-        border-radius: 6px;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        border: 1.5px solid #dc2626;
+        background-color: #fef2f2;
+        color: #dc2626;
+        font-size: 18px;
         cursor: pointer;
-        font-weight: 700;
-        font-size: 14px;
+        transition: all 0.2s ease;
       "
-    >
-      Kapat
-    </button>
+      onmouseover="this.style.backgroundColor='#fee2e2'; this.style.boxShadow='0 0 6px #dc262633'"
+      onmouseout="this.style.backgroundColor='#fef2f2'; this.style.boxShadow='none'"
+    >👎</button>
   </div>
 `;
+
+
+
+
 
         setTimeout(() => {
           popupDiv.style.opacity = "1";
@@ -585,11 +604,11 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
                 className="w-full mt-1 p-2 border rounded"
                 required
               >
-                <option value="1">Çevre</option>
-                <option value="2">Altyapı</option>
-                <option value="3">Ulaşım</option>
-                <option value="4">Sağlık</option>
-                <option value="5">Diğer</option>
+                {Kategori.map((s, index) => ( 
+  <option key={s.id}  value={s.id}>{s.ad}</option>
+))}
+
+               
               </select>
             </label>
 

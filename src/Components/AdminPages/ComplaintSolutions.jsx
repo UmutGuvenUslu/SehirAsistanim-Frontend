@@ -88,30 +88,38 @@ export default function AdminComplaintSolutions() {
         }
     };
 
-    // Silme işlemi
-    const handleDelete = async (id) => {
-        const item = complaints.find((c) => c.id === id);
-        Swal.fire({
-            title: `${item.title} silinsin mi?`,
-            text: "Bu işlem geri alınamaz!",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Evet, sil",
-            cancelButtonText: "İptal",
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await axios.delete(`https://sehirasistanim-backend-production.up.railway.app/Sikayet/Delete?id=${id}`);
-                    setComplaints((prev) => prev.filter((c) => c.id !== id));
-                    if (popupContent?.id === id) setPopupContent(null);
-                    Swal.fire("Silindi!", "Şikayet başarıyla silindi.", "success");
-                } catch (err) {
-                    console.error("Silme hatası:", err);
-                    Swal.fire("Hata", "Şikayet silinemedi.", "error");
-                }
+const handleDelete = async (id) => {
+    const item = complaints.find((c) => c.id === id);
+    Swal.fire({
+        title: `${item.title} silinsin mi?`,
+        text: "Bu işlem geri alınamaz!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Evet, sil",
+        cancelButtonText: "İptal",
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem("token");
+                await axios.delete(
+                    `https://sehirasistanim-backend-production.up.railway.app/Sikayet/Delete/${id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+                setComplaints((prev) => prev.filter((c) => c.id !== id));
+                if (popupContent?.id === id) setPopupContent(null);
+                Swal.fire("Silindi!", "Şikayet başarıyla silindi.", "success");
+            } catch (err) {
+                console.error("Silme hatası:", err);
+                Swal.fire("Hata", "Şikayet silinemedi.", "error");
             }
-        });
-    };
+        }
+    });
+};
+
 
     // Düzenleme butonuna tıklayınca modal aç
     const handleEdit = (complaint) => {
