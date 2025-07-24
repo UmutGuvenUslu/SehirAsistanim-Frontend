@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
+
 export const AuthContext = createContext();
 
 const parseJwt = (token) => {
@@ -63,7 +64,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("tokenExpiry");
     localStorage.removeItem("userName");
+
+
+
     setToken(null);
     setUserName(null);
     toast.info("Oturum süreniz doldu, tekrar giriş yapınız.");

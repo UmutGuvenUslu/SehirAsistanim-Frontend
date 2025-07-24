@@ -1,18 +1,28 @@
 import React, { useState } from "react";
 import Navbar from "../Components/Navbar";
 import UserMap from "../Components/UserMap";
+import { Outlet, useLocation } from "react-router-dom";
 
 export default function MainLayout() {
-  // Arama sonucundan gelen koordinatı tutuyoruz
   const [selectedCoord, setSelectedCoord] = useState(null);
+  const location = useLocation(); // Şu anki URL'i alır
 
   return (
     <>
-      {/* Navbar'a arama sonucu callback'i veriyoruz */}
       <Navbar onSearchResult={setSelectedCoord} />
 
-      {/* UserMap'e seçili koordinatı ve sürüklemede güncelleme fonksiyonunu veriyoruz */}
-      <UserMap selectedCoordinate={selectedCoord} onCoordinateSelect={setSelectedCoord} />
+      {/* Sadece anasayfada çalışsın */}
+      {location.pathname === "/" && (
+        <UserMap
+          selectedCoordinate={selectedCoord}
+          onCoordinateSelect={setSelectedCoord}
+        />
+      )}
+
+      {/* Alt sayfaları buraya yerleştiriyoruz */}
+      <div>
+      <Outlet />
+      </div>
     </>
   );
 }

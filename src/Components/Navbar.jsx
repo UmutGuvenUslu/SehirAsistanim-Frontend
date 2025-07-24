@@ -42,8 +42,8 @@ export default function Navbar({ onSearchResult }) {
         <div className="hidden md:flex items-center space-x-6 text-sm font-medium">
 
           {/* Ortak linkler */}
-          <a href="#" className="hover:text-gray-700 transition">Anasayfa</a>
-          <a href="/hakkinda" className="hover:text-gray-700 transition">Hakkında</a>
+          <Link to="/" className="hover:text-gray-700 transition">Anasayfa</Link>
+          <Link to="/hakkimizda" className="hover:text-gray-700 transition">Hakkımızda</Link>
 
           {/* Giriş yapılmamışsa */}
           {!token && (
@@ -67,7 +67,7 @@ export default function Navbar({ onSearchResult }) {
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="w-9 h-9 rounded-full overflow-hidden border-2 border-gray-300 focus:outline-none"
+                  className="w-9 h-9 rounded-full overflow-hidden border-2 border-gray-300 focus:outline-none cursor-pointer"
                   aria-label="Profil"
                 >
                   <img
@@ -130,7 +130,7 @@ export default function Navbar({ onSearchResult }) {
                         logout();
                         setProfileOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
+                      className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors cursor-pointer"
                       type="button"
                     >
                       {/* İkon */}
@@ -217,8 +217,8 @@ export default function Navbar({ onSearchResult }) {
             </div>
           )}
 
-          <a href="#" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Anasayfa</a>
-          <a href="/hakkinda" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Hakkında</a>
+          <Link to="/" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Anasayfa</Link>
+          <Link href="/hakkinda" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Hakkında</Link>
 
           {!token && (
             <>

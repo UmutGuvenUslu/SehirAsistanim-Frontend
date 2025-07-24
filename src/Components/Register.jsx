@@ -53,10 +53,16 @@ const schema = z
       .min(1, "Cinsiyet seçiniz"),
 
     DogumTarihi: z.string()
-      .min(1, "Doğum tarihi gerekli")
-      .refine((date) => !date || new Date(date) <= new Date(), {
-        message: "Doğum tarihi bugünden ileri olamaz",
-      }),
+  .min(1, "Doğum tarihi gerekli")
+  .refine((date) => {
+    if (!date) return false; // boşsa hata
+    const inputDate = new Date(date);
+    const minDate = new Date("1950-01-01");
+    const today = new Date();
+    return inputDate >= minDate && inputDate <= today;
+  }, {
+    message: "Doğum tarihi 01.01.1950'den küçük ve bugünden ileri olamaz",
+  }),
 
     // Şifre: en az 6 karakter, bir harf, bir sayı ve sadece belirtilen özel karakterlerden biri
     Sifre: z.string()

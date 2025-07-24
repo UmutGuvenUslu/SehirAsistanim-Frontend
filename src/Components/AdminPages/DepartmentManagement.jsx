@@ -1,39 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import DataTable from "react-data-table-component";
 import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import Swal from "sweetalert2";
 
+const apiBaseUrl = "https://sehirasistanim-backend-production.up.railway.app/BelediyeBirimi";
+
 export default function DepartmentManagement() {
     const [search, setSearch] = useState("");
-    const [data, setData] = useState([
-        { id: 1, name: "Temizlik İşleri Müdürlüğü" },
-        { id: 2, name: "Fen İşleri Müdürlüğü" },
-        { id: 3, name: "Park ve Bahçeler Müdürlüğü" },
-    ]);
+    const [data, setData] = useState([]);
 
     const [editingItem, setEditingItem] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [isNew, setIsNew] = useState(false);
 
-    const filteredData = data.filter((item) =>
-        item.name.toLowerCase().includes(search.toLowerCase())
+    useEffect(() => {
+        fetchDepartments();
+    }, []);
+
+    const fetchDepartments = async () => {
+        try {
+            const response = await axios.get(`${apiBaseUrl}/GetAll`);
+            setData(response.data ?? []);
+        } catch (error) {
+            Swal.fire("Hata!", "Birimler alınamadı.", "error");
+        }
+    };
+
+    const filteredData = data.filter(
+        (item) =>
+            item.birimAdi &&
+            item.birimAdi.toLowerCase().includes(search.toLowerCase())
     );
 
     const handleDelete = (id) => {
         const dept = data.find((u) => u.id === id);
         Swal.fire({
-            title: `${dept.name} silinsin mi?`,
+            title: `${dept?.birimAdi} silinsin mi?`,
             text: "Bu işlem geri alınamaz!",
             icon: "warning",
             showCancelButton: true,
-            confirmButtonColor: "oklch(70.5% 0.213 47.604)",
-            cancelButtonColor: "oklch(87.2% 0.01 258.338)",
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
             confirmButtonText: "Evet, sil",
             cancelButtonText: "İptal",
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                setData(data.filter((item) => item.id !== id));
-                Swal.fire("Silindi!", "Birim başarıyla silindi.", "success");
+                try {
+                    await axios.delete(`${apiBaseUrl}/Delete/${id}`);
+                    setData((prev) => prev.filter((item) => item.id !== id));
+                    Swal.fire("Silindi!", "Birim başarıyla silindi.", "success");
+                } catch (error) {
+                    Swal.fire("Hata!", "Silme işlemi başarısız.", "error");
+                }
             }
         });
     };
@@ -46,31 +65,55 @@ export default function DepartmentManagement() {
 
     const handleNew = () => {
         setIsNew(true);
-        setEditingItem({ id: Date.now(), name: "" });
+        setEditingItem({ id: 0, birimAdi: "", emailAdresi: "" });
         setShowModal(true);
     };
 
-    const handleSave = () => {
-        if (isNew) {
-            setData((prev) => [...prev, editingItem]);
-            Swal.fire("Eklendi!", "Birim başarıyla eklendi.", "success");
-        } else {
-            setData((prev) => prev.map((item) => (item.id === editingItem.id ? editingItem : item)));
-            Swal.fire("Güncellendi!", "Birim bilgileri güncellendi.", "success");
+    const handleSave = async () => {
+        if (!editingItem.birimAdi.trim()) {
+            Swal.fire("Hata!", "Birim adı boş olamaz.", "warning");
+            return;
         }
-        setShowModal(false);
+        // Email adresini kontrol etmek istersen buraya ekleyebilirsin.
+
+        try {
+            if (isNew) {
+                const response = await axios.post(`${apiBaseUrl}/Add`, editingItem);
+                if (response.data) {
+                    setData((prev) => [...prev, response.data]); // Yeni ekleme sonrası state güncelle
+                    Swal.fire("Eklendi!", "Birim başarıyla eklendi.", "success");
+                }
+            } else {
+                await axios.put(`${apiBaseUrl}/Update`, editingItem);  // API çağrısını bekle
+                setData((prev) =>
+                    prev.map((item) => (item.id === editingItem.id ? editingItem : item))
+                );  // state’i direkt güncelle, response.data kullanma (senin delete örn gibi)
+                Swal.fire("Güncellendi!", "Birim bilgileri güncellendi.", "success");
+            }
+            setShowModal(false);
+        } catch (error) {
+            Swal.fire("Hata!", "İşlem sırasında hata oluştu.", "error");
+        }
+
     };
 
     const columns = [
-        { name: "Birim Adı", selector: (row) => row.name, sortable: true },
+        { name: "Birim Adı", selector: (row) => row.birimAdi, sortable: true },
+        { name: "E-Posta Adresi", selector: (row) => row.emailAdresi || "-", sortable: true },
         {
             name: "İşlemler",
             cell: (row) => (
                 <div className="flex gap-3">
-                    <button className="text-blue-500 hover:scale-110 cursor-pointer" onClick={() => handleEdit(row)}>
+                    <button
+                        className="text-blue-500 hover:scale-110 cursor-pointer"
+                        onClick={() => handleEdit(row)}
+                    >
                         <PencilIcon className="h-5 w-5" />
                     </button>
-                    <button className="text-red-500 hover:scale-110 cursor-pointer" onClick={() => handleDelete(row.id)}>
+                    <button
+                        className="text-red-500 hover:scale-110 cursor-pointer"
+                        onClick={() => handleDelete(row.id)}
+                    >
                         <TrashIcon className="h-5 w-5" />
                     </button>
                 </div>
@@ -96,7 +139,19 @@ export default function DepartmentManagement() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="border p-2 rounded-lg w-full mb-4"
             />
-            <DataTable columns={columns} data={filteredData} pagination highlightOnHover striped noHeader />
+            <DataTable
+                columns={columns}
+                data={filteredData}
+                pagination
+                highlightOnHover
+                striped
+                noHeader
+                noDataComponent={<div>Aramanıza uygun kayıt bulunamadı.</div>}
+                paginationComponentOptions={{
+                    rowsPerPageText: 'Sayfa başına kayıt',
+                    rangeSeparatorText: ' / ',
+                }}
+            />
 
             {showModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
@@ -106,16 +161,33 @@ export default function DepartmentManagement() {
                         </h3>
                         <input
                             type="text"
-                            value={editingItem.name}
-                            onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                            value={editingItem?.birimAdi || ""}
+                            onChange={(e) =>
+                                setEditingItem({ ...editingItem, birimAdi: e.target.value })
+                            }
                             placeholder="Birim Adı"
                             className="border p-2 rounded-lg w-full mb-3"
                         />
+                        <input
+                            type="email"
+                            value={editingItem?.emailAdresi || ""}
+                            onChange={(e) =>
+                                setEditingItem({ ...editingItem, emailAdresi: e.target.value })
+                            }
+                            placeholder="E-Posta Adresi"
+                            className="border p-2 rounded-lg w-full mb-3"
+                        />
                         <div className="flex justify-end gap-3">
-                            <button className="px-4 py-2 bg-gray-300 text-white rounded cursor-pointer" onClick={() => setShowModal(false)}>
+                            <button
+                                className="px-4 py-2 bg-gray-300 text-white rounded cursor-pointer"
+                                onClick={() => setShowModal(false)}
+                            >
                                 İptal
                             </button>
-                            <button className="px-4 py-2 bg-orange-500 text-white rounded cursor-pointer" onClick={handleSave}>
+                            <button
+                                className="px-4 py-2 bg-orange-500 text-white rounded cursor-pointer"
+                                onClick={handleSave}
+                            >
                                 Kaydet
                             </button>
                         </div>
