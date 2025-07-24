@@ -218,7 +218,7 @@ export default function Navbar({ onSearchResult }) {
           )}
 
           <Link to="/" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Anasayfa</Link>
-          <Link href="/hakkinda" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Hakkında</Link>
+          <Link to="/hakkimizda" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Hakkında</Link>
 
           {!token && (
             <>
