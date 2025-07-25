@@ -143,19 +143,16 @@ function App() {
                 onSearchResult={handleSearchResult} 
                 userLocation={appUserLocation} 
               />
-              <MainLayout />
+              <MainLayout   
+                selectedCoordinate={selectedCoord}
+                onCoordinateSelect={setSelectedCoord}
+                userLocation={appUserLocation} />
             </>
           }
         >
           <Route 
             path="/" 
-            element={
-              <UserMap 
-                selectedCoordinate={selectedCoord}
-                onCoordinateSelect={setSelectedCoord}
-                userLocation={appUserLocation}
-              />
-            } 
+         
           />
           <Route path="/sikayetlerim" element={<Sikayetlerim />} />
           <Route path="/hakkimizda" element={<Hakkimizda />} />

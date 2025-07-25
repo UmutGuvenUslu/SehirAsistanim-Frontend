@@ -53,7 +53,7 @@ export default function Login() {
       }
 
       toast.success("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
-      navigate("/");
+      window.location.href = "/";     
     } else {
       setError("Giriş başarısız: Token alınamadı.");
     }
