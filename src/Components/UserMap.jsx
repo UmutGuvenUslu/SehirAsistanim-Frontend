@@ -16,6 +16,7 @@ import { defaults as defaultControls } from "ol/control";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
+import { getDistance } from "geolib";
 
 const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
 const supabaseKey =
@@ -31,31 +32,33 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [locationError, setLocationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [userLocation, setUserLocation] = useState(null); // Kullanıcının orijinal konumu
+  const [currentComplaints, setCurrentComplaints] = useState([]); // Mevcut şikayetler
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("1");
+  const [category, setCategory] = useState("");
   const [photos, setPhotos] = useState([]);
   const [coords, setCoords] = useState([null, null]);
   const [address, setAddress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [Kategori,setKategori] = useState([]);
+  const [Kategori, setKategori] = useState([]);
   const popupRef = useRef(null);
   const overlayRef = useRef(null);
   const translateInteractionRef = useRef(null);
   const [popupInfo, setPopupInfo] = useState(null);
 
+  // Mesafe limitleri
+    const LIMIT_RADIUS = 25000 ; // metre
+  const PROXIMITY_RADIUS = 20; // metre
 
-useEffect(() => {
-  axios.get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll")
-       .then(res => setKategori(res.data))
-       .catch(err => console.error("Kategori verisi alınamadı:", err));
-}, []);
+  useEffect(() => {
+    axios
+      .get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll")
+      .then((res) => {setKategori(res.data); setCategory(res.data[0].id) })
+      .catch((err) => console.error("Kategori verisi alınamadı:", err));
+  }, []);
 
-
-
-
-  // Token'dan kullanıcı ID'si çözümler
   const getUserIdFromToken = (token) => {
     try {
       if (!token) return null;
@@ -84,7 +87,6 @@ useEffect(() => {
     }
   };
 
-  // Mobil mi masaüstü mü kontrolü
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -96,7 +98,6 @@ useEffect(() => {
     };
   }, []);
 
-  // Enlem-boylamdan adres alır
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -110,7 +111,6 @@ useEffect(() => {
     }
   };
 
-  // Şikayetleri haritaya yükleyen fonksiyon
   const loadComplaints = () => {
     const token = localStorage.getItem("token");
 
@@ -123,11 +123,20 @@ useEffect(() => {
       .then((res) => {
         const data = res.data;
         vectorSourceRef.current.clear();
+        const complaintsData = [];
 
         data.forEach((item) => {
           if (!item.latitude || !item.longitude) return;
 
           const coord = fromLonLat([item.longitude, item.latitude]);
+
+          // Şikayet verilerini sakla
+          complaintsData.push({
+            id: item.id,
+            type: item.sikayetTuruAdi,
+            lat: item.latitude,
+            lon: item.longitude,
+          });
 
           const feature = new Feature({
             geometry: new Point(coord),
@@ -146,6 +155,8 @@ useEffect(() => {
 
           vectorSourceRef.current.addFeature(feature);
         });
+
+        setCurrentComplaints(complaintsData);
       })
       .catch((error) => {
         console.error("Şikayetler yüklenemedi:", error);
@@ -155,7 +166,6 @@ useEffect(() => {
       });
   };
 
-  // Harita ve marker kurulumu
   useEffect(() => {
     const turkeyCenter = fromLonLat([35.2433, 38.9637]);
 
@@ -177,7 +187,6 @@ useEffect(() => {
 
     mapObjRef.current = map;
 
-    // Popup yapılandırması
     const popupDiv = document.createElement("div");
     popupDiv.className = "ol-popup";
     popupDiv.style.position = "absolute";
@@ -189,7 +198,7 @@ useEffect(() => {
     popupDiv.style.transition = "opacity 0.3s ease, transform 0.3s ease";
     popupDiv.style.opacity = "0";
     popupDiv.style.transform = "translateY(10px)";
-    popupDiv.style.textAlign = "center"
+    popupDiv.style.textAlign = "center";
     popupRef.current = popupDiv;
 
     const overlay = new Overlay({
@@ -202,7 +211,6 @@ useEffect(() => {
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
-    // Harita tek tık olayı
     map.on("singleclick", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
 
@@ -212,93 +220,89 @@ useEffect(() => {
 
         const data = feature.get("complaintData");
         popupDiv.innerHTML = `
-  <button 
-    id="popup-close-btn" 
-    style="
-      position: absolute;
-      right: 4px;
-      background: #ef4444;
-      border: none;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      font-size: 16px;
-      font-weight: bold;
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      padding-bottom: 5px;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-      transition: background 0.2s ease;
-    "
-    onmouseover="this.style.background='#dc2626'"
-    onmouseout="this.style.background='#ef4444'"
-  >×</button>
+          <button 
+            id="popup-close-btn" 
+            style="
+              position: absolute;
+              right: 4px;
+              background: #ef4444;
+              border: none;
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              font-size: 16px;
+              font-weight: bold;
+              color: #fff;
+              cursor: pointer;
+              display: flex;
+              padding-bottom: 5px;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+              transition: background 0.2s ease;
+            "
+            onmouseover="this.style.background='#dc2626'"
+            onmouseout="this.style.background='#ef4444'"
+          >×</button>
 
-  <img 
-    src="${data.fotoUrl || 'https://via.placeholder.com/220x120?text=Görsel+Yok'}" 
-    alt="Şikayet Görseli" 
-    style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;"
-  />
+          <img 
+            src="${data.fotoUrl || 'https://via.placeholder.com/220x120?text=Görsel+Yok'}" 
+            alt="Şikayet Görseli" 
+            style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;"
+          />
 
-  <h3 style="margin: 0 0 6px 0; font-weight: bold; font-size: 14px; color: #111;">
-    ${data.baslik || "Başlık Yok"}
-  </h3>
+          <h3 style="margin: 0 0 6px 0; font-weight: bold; font-size: 14px; color: #111;">
+            ${data.baslik || "Başlık Yok"}
+          </h3>
 
-  <p style="margin: 0 0 6px 0; font-size: 12px; color: #444;">
-    ${data.aciklama || "Açıklama Yok"}
-  </p>
+          <p style="margin: 0 0 6px 0; font-size: 12px; color: #444;">
+            ${data.aciklama || "Açıklama Yok"}
+          </p>
 
-  <p style="margin: 0 0 4px 0; font-size: 12px; color: #000;">
-    <strong>Durum:</strong> ${data.durum || "-"}
-  </p>
+          <p style="margin: 0 0 4px 0; font-size: 12px; color: #000;">
+            <strong>Durum:</strong> ${data.durum || "-"}
+          </p>
 
-  <p style="margin: 0 0 8px 0; font-size: 12px; color: #000;">
-    <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
-  </p>
+          <p style="margin: 0 0 8px 0; font-size: 12px; color: #000;">
+            <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
+          </p>
 
-  <div style="display: flex; justify-content: center; gap: 12px;">
-    <button 
-      id="btn-like" 
-      title="Sorun Çözüldü"
-      style="
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        border: 1.5px solid #16a34a;
-        background-color: #ecfdf5;
-        color: #16a34a;
-        font-size: 18px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      "
-      onmouseover="this.style.backgroundColor='#d1fae5'; this.style.boxShadow='0 0 6px #16a34a33'"
-      onmouseout="this.style.backgroundColor='#ecfdf5'; this.style.boxShadow='none'"
-    >👍</button>
+          <div style="display: flex; justify-content: center; gap: 12px;">
+            <button 
+              id="btn-like" 
+              title="Sorun Çözüldü"
+              style="
+                width: 36px; height: 36px;
+                border-radius: 50%;
+                border: 1.5px solid #16a34a;
+                background-color: #ecfdf5;
+                color: #16a34a;
+                font-size: 18px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.backgroundColor='#d1fae5'; this.style.boxShadow='0 0 6px #16a34a33'"
+              onmouseout="this.style.backgroundColor='#ecfdf5'; this.style.boxShadow='none'"
+            >👍</button>
 
-    <button 
-      id="btn-dislike" 
-      title="Sorun Devam Ediyor"
-      style="
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        border: 1.5px solid #dc2626;
-        background-color: #fef2f2;
-        color: #dc2626;
-        font-size: 18px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      "
-      onmouseover="this.style.backgroundColor='#fee2e2'; this.style.boxShadow='0 0 6px #dc262633'"
-      onmouseout="this.style.backgroundColor='#fef2f2'; this.style.boxShadow='none'"
-    >👎</button>
-  </div>
-`;
-
-
-
-
+            <button 
+              id="btn-dislike" 
+              title="Sorun Devam Ediyor"
+              style="
+                width: 36px; height: 36px;
+                border-radius: 50%;
+                border: 1.5px solid #dc2626;
+                background-color: #fef2f2;
+                color: #dc2626;
+                font-size: 18px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.backgroundColor='#fee2e2'; this.style.boxShadow='0 0 6px #dc262633'"
+              onmouseout="this.style.backgroundColor='#fef2f2'; this.style.boxShadow='none'"
+            >👎</button>
+          </div>
+        `;
 
         setTimeout(() => {
           popupDiv.style.opacity = "1";
@@ -324,13 +328,15 @@ useEffect(() => {
       }
     });
 
-    // Kullanıcının mevcut konumu
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lon = position.coords.longitude;
           const lat = position.coords.latitude;
           const userCoord = fromLonLat([lon, lat]);
+
+          // Kullanıcının orijinal konumunu sakla
+          setUserLocation([lon, lat]);
 
           if (!selectedCoordinate) {
             addDraggableMarker(userCoord);
@@ -357,10 +363,8 @@ useEffect(() => {
     loadComplaints();
 
     return () => map.setTarget(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Marker ekleme ve sürüklenebilir yapma
   const addDraggableMarker = (coord) => {
     if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
@@ -396,13 +400,31 @@ useEffect(() => {
     translate.on("translateend", (e) => {
       const geom = e.features.item(0).getGeometry();
       const newCoord = toLonLat(geom.getCoordinates());
+      
+      // Mesafe kontrolü
+      if (userLocation) {
+        const distance = getDistance(
+          { latitude: userLocation[1], longitude: userLocation[0] },
+          { latitude: newCoord[1], longitude: newCoord[0] }
+        );
+
+        if (distance > LIMIT_RADIUS) {
+          toast.warning(`Konumunuzdan ${LIMIT_RADIUS} metre dışına çıkamazsınız.`);
+          // Marker'ı orijinal konumuna geri al
+          geom.setCoordinates(fromLonLat(userLocation));
+          onCoordinateSelect?.(userLocation);
+          setCoords(userLocation);
+          fetchAddress(userLocation[0], userLocation[1]);
+          return;
+        }
+      }
+
       onCoordinateSelect?.(newCoord);
       setCoords(newCoord);
       fetchAddress(newCoord[0], newCoord[1]);
     });
   };
 
-  // selectedCoordinate dışardan geldiğinde marker güncelle
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -413,12 +435,10 @@ useEffect(() => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  // Form aç/kapa
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
-  // Form submit (şikayet gönderme)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -429,6 +449,23 @@ useEffect(() => {
     if (!title || !description || !category || !coords[0] || !coords[1]) {
       toast.error("Lütfen tüm alanları doldurun.");
       return;
+    }
+
+    // Yakınlık kontrolü
+    const selectedCategory = Kategori.find(k => k.id === parseInt(category));
+    if (selectedCategory && currentComplaints.length > 0) {
+      const isNearExisting = currentComplaints.some((c) => {
+        const d = getDistance(
+          { latitude: c.lat, longitude: c.lon },
+          { latitude: coords[1], longitude: coords[0] }
+        );
+        return d <= PROXIMITY_RADIUS && c.type === selectedCategory.ad;
+      });
+
+      if (isNearExisting) {
+        toast.error(`Bu bölgede aynı türde bir şikayet zaten mevcut (${PROXIMITY_RADIUS} metre içinde).`);
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -454,7 +491,7 @@ useEffect(() => {
       if (!kullaniciid) {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
-       debugger;
+
       const body = {
         KullaniciId: kullaniciid,
         Baslik: title,
@@ -470,8 +507,6 @@ useEffect(() => {
         Silindimi: false,
         CozenBirimId: null,
       };
-     
-      console.log("Gönderilecek body:", body);
 
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/Sikayet/Add",
@@ -483,10 +518,8 @@ useEffect(() => {
           },
         }
       );
-
       toast.success("Şikayetiniz başarıyla gönderildi! 🎉");
 
-      // Form sıfırlama
       setTitle("");
       setDescription("");
       setCategory("1");
@@ -495,7 +528,6 @@ useEffect(() => {
       setAddress("");
       setCoords([null, null]);
 
-      // Haritayı şikayetlerle güncelle
       loadComplaints();
     } catch (error) {
       if (error.response) {
@@ -600,71 +632,68 @@ useEffect(() => {
               <span className="font-semibold">Kategori</span>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {setCategory(e.target.value); }}
                 className="w-full mt-1 p-2 border rounded"
                 required
               >
-                {Kategori.map((s, index) => ( 
-  <option key={s.id}  value={s.id}>{s.ad}</option>
-))}
-
-               
+                {Kategori.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.ad}  
+                  </option>
+                ))}
               </select>
             </label>
 
-           <label className="block">
-  <span className="font-semibold mb-1 block">Fotoğraf</span>
-
-  {/* Gizli input */}
-  <input
-    type="file"
-    ref={fileInputRef}
-    onChange={(e) => setPhotos(Array.from(e.target.files))}
-    accept="image/*"
-    multiple
-    className="hidden"
-  />
-
-  {/* Görünen buton */}
-  <button
-    type="button"
-    onClick={() => fileInputRef.current && fileInputRef.current.click()}
-    className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
-  >
-    Fotoğraf Seç veya Kamera Aç
-  </button>
-
-  {/* Önizleme alanı */}
-  {photos.length > 0 && (
-    <div className="mt-3 flex flex-wrap gap-2 max-h-32 overflow-auto">
-      {photos.map((file, idx) => {
-        const url = URL.createObjectURL(file);
-        return (
-          <div key={idx} className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-300">
-            <img
-              src={url}
-              alt={`Seçilen fotoğraf ${idx + 1}`}
-              className="object-cover w-full h-full"
-              onLoad={() => URL.revokeObjectURL(url)} // Bellek sızıntısını önlemek için
-            />
-            <button
-  type="button"
-  aria-label="Fotoğrafı sil"
-  className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1 hover:bg-red-700"
-  onClick={(e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setPhotos((prev) => prev.filter((_, i) => i !== idx));
-  }}
->
-  ×
-</button>
-          </div>
-        );
-      })}
-    </div>
-  )}
-</label>
+            <label className="block">
+              <span className="font-semibold mb-1 block">Fotoğraf</span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => setPhotos(Array.from(e.target.files))}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
+              >
+                Fotoğraf Seç veya Kamera Aç
+              </button>
+              {photos.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 max-h-32 overflow-auto">
+                  {photos.map((file, idx) => {
+                    const url = URL.createObjectURL(file);
+                    return (
+                      <div
+                        key={idx}
+                        className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-300"
+                      >
+                        <img
+                          src={url}
+                          alt={`Seçilen fotoğraf ${idx + 1}`}
+                          className="object-cover w-full h-full"
+                          onLoad={() => URL.revokeObjectURL(url)}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Fotoğrafı sil"
+                          className="absolute top-0 right-0 bg-red-600 text-white rounded-bl px-1 hover:bg-red-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setPhotos((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </label>
 
             <label className="block">
               <span className="font-semibold">Seçilen Adres</span>
