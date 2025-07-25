@@ -20,8 +20,7 @@ import { getDistance } from "geolib";
 
 // Supabase bağlantı bilgileri
 const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
-const supabaseKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
@@ -104,6 +103,12 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (Kategori.length > 0) {
+      loadComplaints();
+    }
+  }, [Kategori]);
+
   // Koordinattan adres bilgisi çekme fonksiyonu
   const fetchAddress = async (lon, lat) => {
     try {
@@ -145,6 +150,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             type: item.sikayetTuruAdi,
             lat: item.latitude,
             lon: item.longitude,
+            turid: item.sikayetTuruId
           });
 
           const feature = new Feature({
@@ -152,12 +158,16 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             complaintData: item,
           });
 
+          // Kategorilerden ilgili ikon URL'sini bul
+          const category = Kategori.find(k => k.id === item.sikayetTuruId);
+          const iconUrl = category?.icon || "https://cdn-icons-png.flaticon.com/512/502/502007.png";
+
           // Şikayet ikonu ayarla
           feature.setStyle(
             new Style({
               image: new Icon({
                 anchor: [0.5, 1],
-                src: "https://cdn-icons-png.flaticon.com/512/502/502007.png",
+                src: iconUrl,
                 scale: 0.05,
               }),
             })
@@ -582,7 +592,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         toast.error("Sunucudan yanıt alınamadı.");
       } else {
         console.error("İstek ayarlarında hata:", error.message);
-        toast.error(`Lütfen giriş yapınız!`);
+        toast.error("Lütfen giriş yapınız!");
       }
     } finally {
       setIsUploading(false);
