@@ -236,24 +236,27 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     // Oy verme işlemi (her popup için ayrı çalışır)
 const handleIncrementDogrulama = async (data) => {
   const token = localStorage.getItem("token");
-  const kullaniciId = getUserIdFromToken(token);
+  if (!token) {
+    toast.error("Lütfen giriş yapınız!");
+    return;
+  }
 
   try {
     const response = await axios.put(
-      `https://sehirasistanim-backend-production.up.railway.app/SikayetDogrulama/IncrementDogrulama?sikayetId=${data.id}&kullanciId=${kullaniciId}`,
+      `https://sehirasistanim-backend-production.up.railway.app/SikayetDogrulama/IncrementDogrulama?sikayetId=${data.id}&kullanciId=${getUserIdFromToken(token)}`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    // Backend true/false döner
-    if (response.data === true) {
-      toast.success(`"${data.baslik}" için oy verdiniz.`);
-      loadComplaints(); // Güncellenmiş oy sayısını çek
+    if (response.data) {
+      toast.success(`"${data.baslik}" için oy verildi!`);
+      loadComplaints();
     } else {
-      toast.error(`"${data.baslik}" için zaten oy vermişsiniz.`);
+      toast.warning(`"${data.baslik}" için zaten oy vermişsiniz!`);
     }
   } catch (error) {
-    toast.error('Doğrulama başarısız: ' + (error.response?.status || error.message));
+    console.error("Doğrulama hatası:", error);
+    toast.error(error.response?.data?.message || "Doğrulama işlemi başarısız!");
   }
 };
 
