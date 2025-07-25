@@ -18,12 +18,14 @@ import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 import { getDistance } from "geolib";
 
+// Supabase bağlantı bilgileri
 const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
 const supabaseKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
+  // Refler ve state'ler
   const mapRef = useRef();
   const fileInputRef = useRef(null);
   const mapObjRef = useRef(null);
@@ -35,6 +37,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [userLocation, setUserLocation] = useState(null); // Kullanıcının orijinal konumu
   const [currentComplaints, setCurrentComplaints] = useState([]); // Mevcut şikayetler
 
+  // Form state'leri
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -49,9 +52,10 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [popupInfo, setPopupInfo] = useState(null);
 
   // Mesafe limitleri
-    const LIMIT_RADIUS = 25000 ; // metre
-  const PROXIMITY_RADIUS = 20; // metre
+  const LIMIT_RADIUS = 25000; // metre (kullanıcının konumundan maksimum uzaklık)
+  const PROXIMITY_RADIUS = 20; // metre (aynı tür şikayetler arası minimum mesafe)
 
+  // Kategorileri API'den çekme efekti
   useEffect(() => {
     axios
       .get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll")
@@ -59,6 +63,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       .catch((err) => console.error("Kategori verisi alınamadı:", err));
   }, []);
 
+  // JWT token'ından kullanıcı ID'sini çıkarma fonksiyonu
   const getUserIdFromToken = (token) => {
     try {
       if (!token) return null;
@@ -87,6 +92,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
+  // Mobil cihaz kontrolü efekti
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -98,6 +104,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     };
   }, []);
 
+  // Koordinattan adres bilgisi çekme fonksiyonu
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -111,6 +118,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
+  // Şikayetleri yükleme fonksiyonu
   const loadComplaints = () => {
     const token = localStorage.getItem("token");
 
@@ -125,6 +133,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         vectorSourceRef.current.clear();
         const complaintsData = [];
 
+        // Her şikayet için harita özelliği oluştur
         data.forEach((item) => {
           if (!item.latitude || !item.longitude) return;
 
@@ -143,6 +152,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             complaintData: item,
           });
 
+          // Şikayet ikonu ayarla
           feature.setStyle(
             new Style({
               image: new Icon({
@@ -166,9 +176,11 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       });
   };
 
+  // Harita başlatma efekti
   useEffect(() => {
-    const turkeyCenter = fromLonLat([35.2433, 38.9637]);
+    const turkeyCenter = fromLonLat([35.2433, 38.9637]); // Türkiye merkez koordinatı
 
+    // Vektör katmanları oluştur
     const complaintSource = new VectorSource();
     const userMarkerSource = new VectorSource();
 
@@ -178,6 +190,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     const complaintLayer = new VectorLayer({ source: complaintSource });
     const userMarkerLayer = new VectorLayer({ source: userMarkerSource });
 
+    // Harita örneği oluştur
     const map = new Map({
       target: mapRef.current,
       layers: [new TileLayer({ source: new OSM() }), complaintLayer, userMarkerLayer],
@@ -187,6 +200,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
     mapObjRef.current = map;
 
+    // Popup div'i oluştur
     const popupDiv = document.createElement("div");
     popupDiv.className = "ol-popup";
     popupDiv.style.position = "absolute";
@@ -201,6 +215,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     popupDiv.style.textAlign = "center";
     popupRef.current = popupDiv;
 
+    // Popup overlay'i oluştur
     const overlay = new Overlay({
       element: popupDiv,
       autoPan: { animation: { duration: 250 } },
@@ -211,14 +226,17 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
+    // Haritada tıklama olayı
     map.on("singleclick", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
 
+      // Eğer bir şikayet özelliğine tıklandıysa
       if (feature && feature.get("complaintData")) {
         const coord = feature.getGeometry().getCoordinates();
         overlay.setPosition(coord);
 
         const data = feature.get("complaintData");
+        // Popup içeriğini oluştur
         popupDiv.innerHTML = `
           <button 
             id="popup-close-btn" 
@@ -304,11 +322,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           </div>
         `;
 
+        // Popup animasyonu
         setTimeout(() => {
           popupDiv.style.opacity = "1";
           popupDiv.style.transform = "translateY(0)";
         }, 10);
 
+        // Kapatma butonu işlevi
         popupDiv.querySelector("#popup-close-btn").onclick = () => {
           popupDiv.style.opacity = "0";
           popupDiv.style.transform = "translateY(10px)";
@@ -319,6 +339,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
         setPopupInfo(data);
       } else {
+        // Popup'ı kapat
         popupDiv.style.opacity = "0";
         popupDiv.style.transform = "translateY(10px)";
         setTimeout(() => {
@@ -328,6 +349,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       }
     });
 
+    // Kullanıcı konumunu alma
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -338,6 +360,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           // Kullanıcının orijinal konumunu sakla
           setUserLocation([lon, lat]);
 
+          // Eğer harici bir koordinat seçilmediyse
           if (!selectedCoordinate) {
             addDraggableMarker(userCoord);
             map.getView().animate({ center: userCoord, zoom: 14 });
@@ -360,16 +383,20 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       setLocationError("Tarayıcınız konum servislerini desteklemiyor.");
     }
 
+    // Şikayetleri yükle
     loadComplaints();
 
+    // Temizleme fonksiyonu
     return () => map.setTarget(null);
   }, []);
 
+  // Sürüklenebilir işaretçi ekleme fonksiyonu
   const addDraggableMarker = (coord) => {
     if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
     userMarkerSourceRef.current.clear();
 
+    // Yeni işaretçi oluştur
     const marker = new Feature({ geometry: new Point(coord) });
 
     marker.setStyle(
@@ -384,11 +411,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
     userMarkerSourceRef.current.addFeature(marker);
 
+    // Önceki sürükleme etkileşimini kaldır
     if (translateInteractionRef.current) {
       mapObjRef.current.removeInteraction(translateInteractionRef.current);
       translateInteractionRef.current = null;
     }
 
+    // Yeni sürükleme etkileşimi ekle
     const translate = new Translate({
       features: userMarkerSourceRef.current.getFeaturesCollection(),
       filter: (feature) => userMarkerSourceRef.current.getFeatures().includes(feature),
@@ -397,6 +426,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     mapObjRef.current.addInteraction(translate);
     translateInteractionRef.current = translate;
 
+    // Sürükleme bitince tetiklenecek olay
     translate.on("translateend", (e) => {
       const geom = e.features.item(0).getGeometry();
       const newCoord = toLonLat(geom.getCoordinates());
@@ -408,6 +438,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           { latitude: newCoord[1], longitude: newCoord[0] }
         );
 
+        // Eğer izin verilen mesafe aşıldıysa
         if (distance > LIMIT_RADIUS) {
           toast.warning(`Konumunuzdan ${LIMIT_RADIUS} metre dışına çıkamazsınız.`);
           // Marker'ı orijinal konumuna geri al
@@ -419,12 +450,14 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         }
       }
 
+      // Yeni koordinatları güncelle
       onCoordinateSelect?.(newCoord);
       setCoords(newCoord);
       fetchAddress(newCoord[0], newCoord[1]);
     });
   };
 
+  // Seçili koordinat değiştiğinde tetiklenen efekt
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -435,13 +468,16 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
+  // Form açma/kapama fonksiyonu
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
+  // Form gönderme işlemi
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validasyonlar
     if (photos.length === 0) {
       toast.error("Lütfen en az bir fotoğraf seçin.");
       return;
@@ -471,6 +507,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     setIsUploading(true);
 
     try {
+      // Fotoğraf yükleme işlemi
       const file = photos[0];
       const fileExt = file.name.split(".").pop();
       const fileName = `complaints/${Date.now()}.${fileExt}`;
@@ -481,10 +518,12 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
       if (uploadError) throw uploadError;
 
+      // Yüklenen fotoğrafın URL'sini al
       const { data: { publicUrl } } = supabase.storage
         .from("sehirasistanimdata")
         .getPublicUrl(fileName);
 
+      // Token'dan kullanıcı ID'sini al
       const token = localStorage.getItem("token");
       const kullaniciid = getUserIdFromToken(token);
 
@@ -492,6 +531,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
 
+      // Gönderilecek veriyi hazırla
       const body = {
         KullaniciId: kullaniciid,
         Baslik: title,
@@ -508,6 +548,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         CozenBirimId: null,
       };
 
+      // API'ye şikayeti gönder
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/Sikayet/Add",
         body,
@@ -520,6 +561,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       );
       toast.success("Şikayetiniz başarıyla gönderildi! 🎉");
 
+      // Formu sıfırla
       setTitle("");
       setDescription("");
       setCategory("1");
@@ -528,8 +570,10 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       setAddress("");
       setCoords([null, null]);
 
+      // Şikayetleri yeniden yükle
       loadComplaints();
     } catch (error) {
+      // Hata yönetimi
       if (error.response) {
         console.error("Backend hatası:", error.response.status, error.response.data);
         toast.error(`Şikayet gönderilirken backend hatası: ${error.response.status}`);
@@ -545,10 +589,12 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
+  // Mobil cihazlarda form açıkken harita yüksekliğini ayarla
   const mapHeight = isMobile ? (isFormOpen ? "50vh" : "100vh") : "100vh";
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+      {/* Konum hatası mesajı */}
       {locationError && (
         <div
           style={{
@@ -569,6 +615,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         </div>
       )}
 
+      {/* Şikayet formu açma/kapama butonu */}
       <button
         onClick={toggleForm}
         className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg flex items-center justify-center z-30 transition-colors duration-300"
@@ -579,6 +626,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         <span className="text-xl">{isFormOpen ? "−" : "+"}</span>
       </button>
 
+      {/* Şikayet formu */}
       <div
         className={`fixed bg-white rounded-xl shadow-2xl z-20 transition-all duration-300 ease-in-out ${
           isMobile ? "bottom-0 left-0 right-0 h-1/2" : "right-6 bottom-16 w-[380px] max-h-[70vh]"
@@ -604,6 +652,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Başlık alanı */}
             <label className="block">
               <span className="font-semibold">Başlık</span>
               <input
@@ -616,6 +665,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </label>
 
+            {/* Açıklama alanı */}
             <label className="block">
               <span className="font-semibold">Açıklama</span>
               <textarea
@@ -628,6 +678,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </label>
 
+            {/* Kategori seçimi */}
             <label className="block">
               <span className="font-semibold">Kategori</span>
               <select
@@ -644,6 +695,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               </select>
             </label>
 
+            {/* Fotoğraf yükleme */}
             <label className="block">
               <span className="font-semibold mb-1 block">Fotoğraf</span>
               <input
@@ -695,6 +747,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               )}
             </label>
 
+            {/* Adres bilgisi */}
             <label className="block">
               <span className="font-semibold">Seçilen Adres</span>
               <input
@@ -706,6 +759,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               />
             </label>
 
+            {/* Gönder butonu */}
             <button
               type="submit"
               disabled={isUploading}
@@ -719,6 +773,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         </div>
       </div>
 
+      {/* Harita div'i */}
       <div
         ref={mapRef}
         style={{
