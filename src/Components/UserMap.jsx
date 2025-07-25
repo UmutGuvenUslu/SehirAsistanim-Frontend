@@ -160,7 +160,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
           // Kategorilerden ilgili ikon URL'sini bul
           const category = Kategori.find(k => k.id === item.sikayetTuruId);
-          const iconUrl = category?.icon || "https://cdn-icons-png.flaticon.com/512/502/502007.png";
+          const iconUrl = category?.icon ;
 
           // Şikayet ikonu ayarla
           feature.setStyle(
