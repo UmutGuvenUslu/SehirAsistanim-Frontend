@@ -57,7 +57,7 @@ export default function UserManagement() {
         const user = data.find((u) => u.id === id);
         Swal.fire({
             title: `${user?.name} silinsin mi?`,
-            text: "Bu işlem geri alınamaz!",
+            text: "Kullanıcıya bağlı kayıtların tümü silinecektir. Bu işlem geri alınamaz!",
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: "Evet, sil",

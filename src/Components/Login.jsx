@@ -26,47 +26,49 @@ export default function Login() {
   });
 
   const onSubmit = async (data) => {
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    try {
-      const response = await axios.post(
-        "https://sehirasistanim-backend-production.up.railway.app/api/auth/login",
-        {
-          email: data.email,
-          password: data.password,
+  try {
+    const response = await axios.post(
+      "https://sehirasistanim-backend-production.up.railway.app/api/auth/login",
+      {
+        email: data.email,
+        password: data.password,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data.token) {
-        const expiry = Date.now() + 60 * 60 * 1000; 
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("tokenExpiry", expiry.toString());
-
-        if (response.data.fullName) {
-          localStorage.setItem("userName", response.data.fullName);
-        }
-
-        toast.success("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
-        navigate("/");
-      } else {
-        setError("Giriş başarısız: Token alınamadı.");
       }
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Giriş sırasında hata oluştu.");
-      } else {
-        setError("Bilinmeyen bir hata oluştu.");
+    );
+
+    if (response.data.token) {
+      const expiry = Date.now() + 60 * 60 * 1000; 
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("tokenExpiry", expiry.toString());
+
+      if (response.data.fullName) {
+        localStorage.setItem("userName", response.data.fullName);
       }
-    } finally {
-      setLoading(false);
+
+      toast.success("Giriş başarılı! Hoşgeldiniz " + (response.data.fullName || ""));
+      navigate("/");
+    } else {
+      setError("Giriş başarısız: Token alınamadı.");
     }
-  };
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      // Hata mesajını tek bir error'a indirgemek için
+      setError("Email adresiniz ve/veya şifreniz yanlış.");
+    } else {
+      setError("Bilinmeyen bir hata oluştu.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white">

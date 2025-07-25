@@ -37,7 +37,7 @@ export default function ComplaintTypeManagement() {
         const dept = data.find((u) => u.id === id);
         Swal.fire({
             title: `${dept?.ad} silinsin mi?`,
-            text: "Bu işlem geri alınamaz!",
+            text: "Şikayet türüne bağlı kayıtların tümü silinecektir.Bu işlem geri alınamaz!",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#d33",
