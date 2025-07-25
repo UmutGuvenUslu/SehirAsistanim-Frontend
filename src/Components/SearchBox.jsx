@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { getDistance } from "geolib";
 
-const SearchBox = ({ onSearchResult }) => {
+const SearchBox = ({ onSearchResult, userLocation }) => {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
+    const [locationError, setLocationError] = useState("");
 
     const wrapperRef = useRef(null);
+    const LIMIT_RADIUS = 25000; // 25 km in meters
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -38,13 +41,33 @@ const SearchBox = ({ onSearchResult }) => {
                             q: query,
                             format: "json",
                             addressdetails: 1,
-                            limit: 5,
+                            limit: 10, // Daha fazla sonuç alalım ki filtreleyebilelim
                             countrycodes: "tr",
                         },
                     }
                 );
-                setResults(response.data);
+                
+                // Kullanıcı konumuna göre filtreleme yap
+                let filteredResults = response.data;
+                if (userLocation) {
+                    filteredResults = response.data.filter(place => {
+                        const distance = getDistance(
+                            { latitude: userLocation[1], longitude: userLocation[0] },
+                            { latitude: parseFloat(place.lat), longitude: parseFloat(place.lon) }
+                        );
+                        return distance <= LIMIT_RADIUS;
+                    });
+                }
+
+                // En fazla 5 sonuç göster
+                setResults(filteredResults.slice(0, 5));
                 setShowDropdown(true);
+
+                if (userLocation && filteredResults.length === 0) {
+                    setLocationError("Aradığınız konum bulunamadı veya 25 km sınırının dışında kaldı.");
+                } else {
+                    setLocationError("");
+                }
             } catch {
                 setError("Arama sırasında hata oluştu.");
             } finally {
@@ -54,7 +77,7 @@ const SearchBox = ({ onSearchResult }) => {
 
         const timeoutId = setTimeout(fetchResults, 300);
         return () => clearTimeout(timeoutId);
-    }, [query]);
+    }, [query, userLocation]);
 
     const handleSelect = (place) => {
         setQuery(place.display_name);
@@ -94,6 +117,10 @@ const SearchBox = ({ onSearchResult }) => {
 
             {error && (
                 <div style={{ color: "red", marginTop: 4, fontSize: 12 }}>{error}</div>
+            )}
+
+            {locationError && (
+                <div style={{ color: "orange", marginTop: 4, fontSize: 12 }}>{locationError}</div>
             )}
 
             {showDropdown && results.length > 0 && (

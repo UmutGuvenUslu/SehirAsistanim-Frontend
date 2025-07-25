@@ -5,13 +5,13 @@ import { FaSearch, FaBars, FaTimes } from "react-icons/fa";
 import { AuthContext } from "../Context/AuthContext";
 import profilePic from "./user.png";
 
-export default function Navbar({ onSearchResult }) {
-  const { token, userName = "Kullanıcı", logout } = useContext(AuthContext); // userName Context'ten alınıyor
+export default function Navbar({ onSearchResult, userLocation }) {
+  const { token, userName = "Kullanıcı", logout } = useContext(AuthContext);
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const safeOnSearchResult = onSearchResult || (() => { });
+  const safeOnSearchResult = onSearchResult || (() => {});
 
   const profileRef = useRef();
 
@@ -27,20 +27,20 @@ export default function Navbar({ onSearchResult }) {
 
   return (
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[1200px] px-4">
-
       <nav className="bg-white/30 backdrop-blur-md text-black px-6 py-3 rounded-full shadow-lg border border-white/20 flex items-center justify-between min-w-[300px]">
-
         {/* Logo */}
         <span className="font-bold text-lg select-none">Şehir Asistanım</span>
 
         {/* Desktop SearchBox */}
         <div className="hidden md:block ml-4 w-[300px]">
-          <SearchBox onSearchResult={onSearchResult} />
+          <SearchBox 
+            onSearchResult={onSearchResult} 
+            userLocation={userLocation} 
+          />
         </div>
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center space-x-6 text-sm font-medium">
-
           {/* Ortak linkler */}
           <Link to="/" className="hover:text-gray-700 transition">Anasayfa</Link>
           <Link to="/hakkimizda" className="hover:text-gray-700 transition">Hakkımızda</Link>
@@ -79,7 +79,6 @@ export default function Navbar({ onSearchResult }) {
 
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-300 text-sm z-50 overflow-hidden font-sans">
-
                     {/* Hoşgeldin yazısı */}
                     <div className="px-6 py-3 border-b border-gray-300 font-semibold text-gray-900 whitespace-normal select-none">
                       Hoşgeldin, {userName}
@@ -91,7 +90,6 @@ export default function Navbar({ onSearchResult }) {
                       className="flex items-center gap-3 px-6 py-3 hover:bg-gray-100 transition-colors border-b border-gray-200 text-gray-700"
                       onClick={() => setProfileOpen(false)}
                     >
-                      {/* İkon */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-5 w-5 text-gray-500 flex-shrink-0"
@@ -110,7 +108,6 @@ export default function Navbar({ onSearchResult }) {
                       className="flex items-center gap-3 px-6 py-3 hover:bg-gray-100 transition-colors border-b border-gray-200 text-gray-700"
                       onClick={() => setProfileOpen(false)}
                     >
-                      {/* İkon */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-5 w-5 text-gray-500 flex-shrink-0"
@@ -133,7 +130,6 @@ export default function Navbar({ onSearchResult }) {
                       className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors cursor-pointer"
                       type="button"
                     >
-                      {/* İkon */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-5 w-5 flex-shrink-0"
@@ -149,11 +145,6 @@ export default function Navbar({ onSearchResult }) {
                     </button>
                   </div>
                 )}
-
-
-
-
-
               </div>
             </>
           )}
@@ -161,12 +152,11 @@ export default function Navbar({ onSearchResult }) {
 
         {/* Mobile Controls */}
         <div className="md:hidden flex items-center space-x-4">
-
           {/* Search Icon */}
           <button
             onClick={() => {
               setSearchOpen(!searchOpen);
-              setMenuOpen(false); // Menü kapansın
+              setMenuOpen(false);
             }}
             className="p-2 rounded hover:bg-black/10"
             aria-label="Ara"
@@ -179,8 +169,8 @@ export default function Navbar({ onSearchResult }) {
           <button
             onClick={() => {
               setMenuOpen(!menuOpen);
-              setSearchOpen(false); // Arama kapansın
-              setProfileOpen(false); // Profil kapansın
+              setSearchOpen(false);
+              setProfileOpen(false);
             }}
             className="p-2 rounded hover:bg-black/10"
             aria-label="Menüyü aç"
@@ -200,16 +190,15 @@ export default function Navbar({ onSearchResult }) {
                 safeOnSearchResult(coords);
                 setSearchOpen(false);
               }}
+              userLocation={userLocation}
             />
           </div>
         </div>
       )}
 
-
       {/* Mobile açılır Menü */}
       {menuOpen && (
         <div className="absolute top-full mt-2 left-0 right-0 bg-white/80 backdrop-blur-md rounded shadow p-4 z-50 flex flex-col space-y-3 text-center text-sm font-medium">
-
           {/* Hoşgeldin mesajı mobil menüde en üstte */}
           {token && (
             <div className=" text-center px-2 py-2 font-semibold border-b border-gray-300 ">
@@ -253,7 +242,6 @@ export default function Navbar({ onSearchResult }) {
           )}
         </div>
       )}
-
     </div>
   );
 }

@@ -1,6 +1,10 @@
-import React, { useEffect, useContext } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import React, { useEffect, useContext, useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { getDistance } from "geolib";
 
+// Component imports
 import UserMap from "./Components/UserMap";
 import Login from "./Components/Login";
 import Register from "./Components/Register";
@@ -13,15 +17,11 @@ import AdminProfile from "./Components/AdminPages/AdminProfile";
 import DepartmentManagement from "./Components/AdminPages/DepartmentManagement";
 import ComplaintSolutions from "./Components/AdminPages/ComplaintSolutions";
 import ComplaintTypes from "./Components/AdminPages/ComplaintTypes";
-
 import Hakkimizda from "./Components/Hakkimizda";
 import Profilim from "./Components/Profilim";
 import Navbar from "./Components/Navbar";
 
-import "./App.css";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
+// Layout imports
 import AuthLayout from "./Layouts/AuthLayout";
 import MainLayout from "./Layouts/MainLayout";
 import { AuthContext } from "./Context/AuthContext";
@@ -57,8 +57,30 @@ function ProtectedRoute({ children, requiredRole }) {
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useContext(AuthContext);
+  const [appUserLocation, setAppUserLocation] = useState(null);
+  const [selectedCoord, setSelectedCoord] = useState(null);
+  const LIMIT_RADIUS = 25000; // 25 km in meters
 
+  // Kullanıcı konumunu al
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lon = position.coords.longitude;
+          const lat = position.coords.latitude;
+          setAppUserLocation([lon, lat]);
+        },
+        (error) => {
+          console.error("Konum alınamadı:", error);
+          toast.warning("Konum servisleri kapalı. Harita özellikleri sınırlı olabilir.");
+        }
+      );
+    }
+  }, []);
+
+  // Token süresi kontrolü
   useEffect(() => {
     const token = localStorage.getItem("token");
     const expiry = localStorage.getItem("tokenExpiry");
@@ -80,6 +102,30 @@ function App() {
     }
   }, [logout]);
 
+  const handleSearchResult = (coords) => {
+    // Seçilen konumun kullanıcı konumuna uzaklığını kontrol et
+    if (appUserLocation) {
+      const distance = getDistance(
+        { latitude: appUserLocation[1], longitude: appUserLocation[0] },
+        { latitude: coords[1], longitude: coords[0] }
+      );
+      
+      if (distance <= LIMIT_RADIUS) {
+        setSelectedCoord(coords);
+        if (location.pathname !== "/") {
+          navigate("/"); // Anasayfaya yönlendir
+        }
+      } else {
+        toast.warning("Seçtiğiniz konum 25 km sınırının dışında kaldı.");
+      }
+    } else {
+      setSelectedCoord(coords);
+      if (location.pathname !== "/") {
+        navigate("/"); // Anasayfaya yönlendir
+      }
+    }
+  };
+
   return (
     <>
       <Routes>
@@ -93,12 +139,24 @@ function App() {
         <Route
           element={
             <>
-              <Navbar /> {/* Sadece bu rotalarda Navbar görünür */}
+              <Navbar 
+                onSearchResult={handleSearchResult} 
+                userLocation={appUserLocation} 
+              />
               <MainLayout />
             </>
           }
         >
-          <Route path="/" element={<></>} />
+          <Route 
+            path="/" 
+            element={
+              <UserMap 
+                selectedCoordinate={selectedCoord}
+                onCoordinateSelect={setSelectedCoord}
+                userLocation={appUserLocation}
+              />
+            } 
+          />
           <Route path="/sikayetlerim" element={<Sikayetlerim />} />
           <Route path="/hakkimizda" element={<Hakkimizda />} />
           <Route path="/profil" element={<Profilim />} />
