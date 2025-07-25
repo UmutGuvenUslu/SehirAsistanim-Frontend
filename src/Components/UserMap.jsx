@@ -247,90 +247,95 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
 
         const data = feature.get("complaintData");
         // Popup içeriğini oluştur
-        popupDiv.innerHTML = `
-          <button 
-            id="popup-close-btn" 
-            style="
-              position: absolute;
-              right: 4px;
-              background: #ef4444;
-              border: none;
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              font-size: 16px;
-              font-weight: bold;
-              color: #fff;
-              cursor: pointer;
-              display: flex;
-              padding-bottom: 5px;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-              transition: background 0.2s ease;
-            "
-            onmouseover="this.style.background='#dc2626'"
-            onmouseout="this.style.background='#ef4444'"
-          >×</button>
+ popupDiv.innerHTML = `
+  <div style="position: relative; font-family: 'Segoe UI', sans-serif; max-width: 240px;">
 
-          <img 
-            src="${data.fotoUrl || 'https://via.placeholder.com/220x120?text=Görsel+Yok'}" 
-            alt="Şikayet Görseli" 
-            style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;"
-          />
+    <button 
+      id="popup-close-btn"
+      style="
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: #ef4444;
+        border: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        transition: background 0.2s ease;
+      "
+      onmouseover="this.style.background='#dc2626'"
+      onmouseout="this.style.background='#ef4444'"
+    >×</button>
 
-          <h3 style="margin: 0 0 6px 0; font-weight: bold; font-size: 14px; color: #111;">
-            ${data.baslik || "Başlık Yok"}
-          </h3>
+    <img 
+      src="${data.fotoUrl || 'https://via.placeholder.com/240x130?text=Görsel+Yok'}" 
+      alt="Şikayet Görseli"
+      style="width: 100%; height: 130px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;"
+    />
 
-          <p style="margin: 0 0 6px 0; font-size: 12px; color: #444;">
-            ${data.aciklama || "Açıklama Yok"}
-          </p>
+    <h3 style="margin: 0 0 6px; font-weight: 600; font-size: 15px; color: #111;">
+      ${data.baslik || "Başlık Yok"}
+    </h3>
 
-          <p style="margin: 0 0 4px 0; font-size: 12px; color: #000;">
-            <strong>Durum:</strong> ${data.durum || "-"}
-          </p>
+    <p style="margin: 0 0 6px; font-size: 13px; color: #444; line-height: 1.4;">
+      ${data.aciklama || "Açıklama Yok"}
+    </p>
 
-          <p style="margin: 0 0 8px 0; font-size: 12px; color: #000;">
-            <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
-          </p>
+    <p style="margin: 0 0 4px; font-size: 12px; color: #222;">
+      <strong>Durum:</strong> ${data.durum || "-"}
+    </p>
 
-          <div style="display: flex; justify-content: center; gap: 12px;">
-            <button 
-              id="btn-like" 
-              title="Sorun Çözüldü"
-              style="
-                width: 36px; height: 36px;
-                border-radius: 50%;
-                border: 1.5px solid #16a34a;
-                background-color: #ecfdf5;
-                color: #16a34a;
-                font-size: 18px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-              "
-              onmouseover="this.style.backgroundColor='#d1fae5'; this.style.boxShadow='0 0 6px #16a34a33'"
-              onmouseout="this.style.backgroundColor='#ecfdf5'; this.style.boxShadow='none'"
-            >👍</button>
+    <p style="margin: 0 0 10px; font-size: 12px; color: #222;">
+      <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
+    </p>
 
-            <button 
-              id="btn-dislike" 
-              title="Sorun Devam Ediyor"
-              style="
-                width: 36px; height: 36px;
-                border-radius: 50%;
-                border: 1.5px solid #dc2626;
-                background-color: #fef2f2;
-                color: #dc2626;
-                font-size: 18px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-              "
-              onmouseover="this.style.backgroundColor='#fee2e2'; this.style.boxShadow='0 0 6px #dc262633'"
-              onmouseout="this.style.backgroundColor='#fef2f2'; this.style.boxShadow='none'"
-            >👎</button>
-          </div>
-        `;
+    <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+      <button 
+        id="btn-like"
+        title="Sorun Çözüldü"
+        style="
+          width: 40px; height: 40px;
+          background-color: #f0fdf4;
+          border: 1.5px solid #22c55e;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.3s, box-shadow 0.3s;
+        "
+        onmouseover="this.style.backgroundColor='#dcfce7'; this.style.boxShadow='0 0 8px #22c55e44'"
+        onmouseout="this.style.backgroundColor='#f0fdf4'; this.style.boxShadow='none'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="#22c55e" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M14 9V5a3 3 0 0 0-6 0v4H5a1 1 0 0 0-.99 1.14l1.38 9A2 2 0 0 0 7.37 21h9.26a2 2 0 0 0 1.98-1.86l1.38-9A1 1 0 0 0 19 9h-5z"/>
+        </svg>
+      </button>
+
+      <span style="
+        font-size: 13px;
+        font-weight: 500;
+        color: #22c55e;
+        background-color: #f0fdf4;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #bbf7d0;
+        box-shadow: inset 0 0 2px #bbf7d0;
+      ">
+        ${data.dogrulamaSayisi}
+      </span>
+    </div>
+
+  </div>
+`;
 
         // Popup animasyonu
         setTimeout(() => {
