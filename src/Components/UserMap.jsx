@@ -233,6 +233,32 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       stopEvent: true,
     });
 
+    // Oy verme işlemi (her popup için ayrı çalışır)
+const handleIncrementDogrulama = async (data) => {
+  const token = localStorage.getItem("token");
+  const kullaniciId = getUserIdFromToken(token);
+
+  try {
+    const response = await axios.put(
+      `https://sehirasistanim-backend-production.up.railway.app/SikayetDogrulama/IncrementDogrulama?sikayetId=${data.id}&kullanciId=${kullaniciId}`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    // Backend true/false döner
+    if (response.data === true) {
+      toast.success(`"${data.baslik}" için oy verdiniz.`);
+      loadComplaints(); // Güncellenmiş oy sayısını çek
+    } else {
+      toast.error(`"${data.baslik}" için zaten oy vermişsiniz.`);
+    }
+  } catch (error) {
+    toast.error('Doğrulama başarısız: ' + (error.response?.status || error.message));
+  }
+};
+
+
+
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
@@ -300,7 +326,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
       <button 
         id="btn-like"
-        title="Sorun Çözüldü"
+        title="Sorun Hala Var!"
         style="
           width: 40px; height: 40px;
           background-color: #f0fdf4;
@@ -311,6 +337,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
           justify-content: center;
           cursor: pointer;
           transition: background 0.3s, box-shadow 0.3s;
+          onClick={handleIncrementDogrulama}
         "
         onmouseover="this.style.backgroundColor='#dcfce7'; this.style.boxShadow='0 0 8px #22c55e44'"
         onmouseout="this.style.backgroundColor='#f0fdf4'; this.style.boxShadow='none'"
@@ -330,12 +357,16 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         border: 1px solid #bbf7d0;
         box-shadow: inset 0 0 2px #bbf7d0;
       ">
-        ${data.dogrulamaSayisi}
+        ${data.dogrulanmaSayisi}
       </span>
     </div>
 
   </div>
 `;
+
+        popupDiv.querySelector("#btn-like").addEventListener("click", () => {
+  handleIncrementDogrulama(data); // data parametresini de buradan geçir
+});
 
         // Popup animasyonu
         setTimeout(() => {
