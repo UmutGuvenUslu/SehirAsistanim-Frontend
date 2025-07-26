@@ -155,7 +155,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
               image: new Icon({
                 anchor: [0.5, 1],
                 src: iconUrl,
-                scale: 0.05,
+                scale: 0.058,
               }),
             })
           );
