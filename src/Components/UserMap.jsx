@@ -18,13 +18,11 @@ import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 import { getDistance } from "geolib";
 
-// Supabase bağlantı bilgileri
 const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
-  // Refler ve state'ler
   const mapRef = useRef();
   const fileInputRef = useRef(null);
   const mapObjRef = useRef(null);
@@ -33,10 +31,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const [locationError, setLocationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [userLocation, setUserLocation] = useState(null); // Kullanıcının orijinal konumu
-  const [currentComplaints, setCurrentComplaints] = useState([]); // Mevcut şikayetler
-
-  // Form state'leri
+  const [userLocation, setUserLocation] = useState(null);
+  const [currentComplaints, setCurrentComplaints] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -50,19 +46,16 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
   const translateInteractionRef = useRef(null);
   const [popupInfo, setPopupInfo] = useState(null);
 
-  // Mesafe limitleri
-  const LIMIT_RADIUS = 25000; // metre (kullanıcının konumundan maksimum uzaklık)
-  const PROXIMITY_RADIUS = 20; // metre (aynı tür şikayetler arası minimum mesafe)
+  const LIMIT_RADIUS = 25000;
+  const PROXIMITY_RADIUS = 20;
 
-  // Kategorileri API'den çekme efekti
   useEffect(() => {
     axios
       .get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll")
-      .then((res) => {setKategori(res.data); setCategory(res.data[0].id) })
+      .then((res) => {setKategori(res.data); setCategory(res.data[0]?.id || "") })
       .catch((err) => console.error("Kategori verisi alınamadı:", err));
   }, []);
 
-  // JWT token'ından kullanıcı ID'sini çıkarma fonksiyonu
   const getUserIdFromToken = (token) => {
     try {
       if (!token) return null;
@@ -91,7 +84,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
-  // Mobil cihaz kontrolü efekti
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -109,7 +101,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   }, [Kategori]);
 
-  // Koordinattan adres bilgisi çekme fonksiyonu
   const fetchAddress = async (lon, lat) => {
     try {
       const response = await fetch(
@@ -123,7 +114,6 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     }
   };
 
-  // Şikayetleri yükleme fonksiyonu
   const loadComplaints = () => {
     const token = localStorage.getItem("token");
 
@@ -138,19 +128,18 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
         vectorSourceRef.current.clear();
         const complaintsData = [];
 
-        // Her şikayet için harita özelliği oluştur
         data.forEach((item) => {
           if (!item.latitude || !item.longitude) return;
 
           const coord = fromLonLat([item.longitude, item.latitude]);
 
-          // Şikayet verilerini sakla
           complaintsData.push({
             id: item.id,
             type: item.sikayetTuruAdi,
             lat: item.latitude,
             lon: item.longitude,
-            turid: item.sikayetTuruId
+            turid: item.sikayetTuruId,
+            dogrulanmaSayisi: item.dogrulanmaSayisi
           });
 
           const feature = new Feature({
@@ -158,11 +147,9 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
             complaintData: item,
           });
 
-          // Kategorilerden ilgili ikon URL'sini bul
           const category = Kategori.find(k => k.id === item.sikayetTuruId);
-          const iconUrl = category?.icon ;
+          const iconUrl = category?.icon;
 
-          // Şikayet ikonu ayarla
           feature.setStyle(
             new Style({
               image: new Icon({
@@ -186,55 +173,8 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       });
   };
 
-  // Harita başlatma efekti
-  useEffect(() => {
-    const turkeyCenter = fromLonLat([35.2433, 38.9637]); // Türkiye merkez koordinatı
-
-    // Vektör katmanları oluştur
-    const complaintSource = new VectorSource();
-    const userMarkerSource = new VectorSource();
-
-    vectorSourceRef.current = complaintSource;
-    userMarkerSourceRef.current = userMarkerSource;
-
-    const complaintLayer = new VectorLayer({ source: complaintSource });
-    const userMarkerLayer = new VectorLayer({ source: userMarkerSource });
-
-    // Harita örneği oluştur
-    const map = new Map({
-      target: mapRef.current,
-      layers: [new TileLayer({ source: new OSM() }), complaintLayer, userMarkerLayer],
-      view: new View({ center: turkeyCenter, zoom: 7 }),
-      controls: defaultControls({ zoom: false, attribution: false }),
-    });
-
-    mapObjRef.current = map;
-
-    // Popup div'i oluştur
-    const popupDiv = document.createElement("div");
-    popupDiv.className = "ol-popup";
-    popupDiv.style.position = "absolute";
-    popupDiv.style.backgroundColor = "white";
-    popupDiv.style.padding = "10px";
-    popupDiv.style.borderRadius = "8px";
-    popupDiv.style.minWidth = "200px";
-    popupDiv.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
-    popupDiv.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-    popupDiv.style.opacity = "0";
-    popupDiv.style.transform = "translateY(10px)";
-    popupDiv.style.textAlign = "center";
-    popupRef.current = popupDiv;
-
-    // Popup overlay'i oluştur
-    const overlay = new Overlay({
-      element: popupDiv,
-      autoPan: { animation: { duration: 250 } },
-      positioning: "bottom-center",
-      stopEvent: true,
-    });
-
-    // Oy verme işlemi (her popup için ayrı çalışır)
-const handleIncrementDogrulama = async (data) => {
+  // Güncellenmiş doğrulama fonksiyonu
+ const handleIncrementDogrulama = async (data) => {
   const token = localStorage.getItem("token");
   if (!token) {
     toast.error("Lütfen giriş yapınız!");
@@ -250,7 +190,37 @@ const handleIncrementDogrulama = async (data) => {
 
     if (response.data) {
       toast.success(`"${data.baslik}" için oy verildi!`);
-      loadComplaints();
+      
+      // Sadece ilgili şikayeti güncelle (SİZİN ORJİNAL KODUNUZ)
+      setCurrentComplaints(prevComplaints => 
+        prevComplaints.map(complaint => 
+          complaint.id === data.id 
+            ? { ...complaint, dogrulanmaSayisi: data.dogrulanmaSayisi + 1 } 
+            : complaint
+        )
+      );
+
+      // Vektör kaynağındaki ilgili özelliği güncelle (SİZİN ORJİNAL KODUNUZ)
+      const features = vectorSourceRef.current.getFeatures();
+      const featureToUpdate = features.find(f => f.get('complaintData').id === data.id);
+      
+      if (featureToUpdate) {
+        const updatedData = {
+          ...featureToUpdate.get('complaintData'),
+          dogrulanmaSayisi: data.dogrulanmaSayisi + 1
+        };
+        featureToUpdate.set('complaintData', updatedData);
+        
+        // POPUP KAPATMA KODU (TEK EKLENEN KISIM)
+        if (popupRef.current && overlayRef.current) {
+          popupRef.current.style.opacity = "0";
+          popupRef.current.style.transform = "translateY(10px)";
+          setTimeout(() => {
+            overlayRef.current.setPosition(undefined);
+            setPopupInfo(null); // Popup state'ini temizle
+          }, 300);
+        }
+      }
     } else {
       toast.warning(`"${data.baslik}" için zaten oy vermişsiniz!`);
     }
@@ -260,124 +230,157 @@ const handleIncrementDogrulama = async (data) => {
   }
 };
 
+  useEffect(() => {
+    const turkeyCenter = fromLonLat([35.2433, 38.9637]);
 
+    const complaintSource = new VectorSource();
+    const userMarkerSource = new VectorSource();
+
+    vectorSourceRef.current = complaintSource;
+    userMarkerSourceRef.current = userMarkerSource;
+
+    const complaintLayer = new VectorLayer({ source: complaintSource });
+    const userMarkerLayer = new VectorLayer({ source: userMarkerSource });
+
+    const map = new Map({
+      target: mapRef.current,
+      layers: [new TileLayer({ source: new OSM() }), complaintLayer, userMarkerLayer],
+      view: new View({ center: turkeyCenter, zoom: 7 }),
+      controls: defaultControls({ zoom: false, attribution: false }),
+    });
+
+    mapObjRef.current = map;
+
+    const popupDiv = document.createElement("div");
+    popupDiv.className = "ol-popup";
+    popupDiv.style.position = "absolute";
+    popupDiv.style.backgroundColor = "white";
+    popupDiv.style.padding = "10px";
+    popupDiv.style.borderRadius = "8px";
+    popupDiv.style.minWidth = "200px";
+    popupDiv.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
+    popupDiv.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+    popupDiv.style.opacity = "0";
+    popupDiv.style.transform = "translateY(10px)";
+    popupDiv.style.textAlign = "center";
+    popupRef.current = popupDiv;
+
+    const overlay = new Overlay({
+      element: popupDiv,
+      autoPan: { animation: { duration: 250 } },
+      positioning: "bottom-center",
+      stopEvent: true,
+    });
 
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
-    // Haritada tıklama olayı
     map.on("singleclick", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
 
-      // Eğer bir şikayet özelliğine tıklandıysa
       if (feature && feature.get("complaintData")) {
         const coord = feature.getGeometry().getCoordinates();
         overlay.setPosition(coord);
 
         const data = feature.get("complaintData");
-        // Popup içeriğini oluştur
- popupDiv.innerHTML = `
-  <div style="position: relative; font-family: 'Segoe UI', sans-serif; max-width: 240px;">
+        
+        popupDiv.innerHTML = `
+          <div style="position: relative; font-family: 'Segoe UI', sans-serif; max-width: 240px;">
+            <button 
+              id="popup-close-btn"
+              style="
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                background: #ef4444;
+                border: none;
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                font-size: 18px;
+                font-weight: bold;
+                color: #fff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                transition: background 0.2s ease;
+              "
+              onmouseover="this.style.background='#dc2626'"
+              onmouseout="this.style.background='#ef4444'"
+            >×</button>
 
-    <button 
-      id="popup-close-btn"
-      style="
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        background: #ef4444;
-        border: none;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        font-size: 18px;
-        font-weight: bold;
-        color: #fff;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        transition: background 0.2s ease;
-      "
-      onmouseover="this.style.background='#dc2626'"
-      onmouseout="this.style.background='#ef4444'"
-    >×</button>
+            <img 
+              src="${data.fotoUrl || 'https://via.placeholder.com/240x130?text=Görsel+Yok'}" 
+              alt="Şikayet Görseli"
+              style="width: 100%; height: 130px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;"
+            />
 
-    <img 
-      src="${data.fotoUrl || 'https://via.placeholder.com/240x130?text=Görsel+Yok'}" 
-      alt="Şikayet Görseli"
-      style="width: 100%; height: 130px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;"
-    />
+            <h3 style="margin: 0 0 6px; font-weight: 600; font-size: 15px; color: #111;">
+              ${data.baslik || "Başlık Yok"}
+            </h3>
 
-    <h3 style="margin: 0 0 6px; font-weight: 600; font-size: 15px; color: #111;">
-      ${data.baslik || "Başlık Yok"}
-    </h3>
+            <p style="margin: 0 0 6px; font-size: 13px; color: #444; line-height: 1.4;">
+              ${data.aciklama || "Açıklama Yok"}
+            </p>
 
-    <p style="margin: 0 0 6px; font-size: 13px; color: #444; line-height: 1.4;">
-      ${data.aciklama || "Açıklama Yok"}
-    </p>
+            <p style="margin: 0 0 4px; font-size: 12px; color: #222;">
+              <strong>Durum:</strong> ${data.durum || "-"}
+            </p>
 
-    <p style="margin: 0 0 4px; font-size: 12px; color: #222;">
-      <strong>Durum:</strong> ${data.durum || "-"}
-    </p>
+            <p style="margin: 0 0 10px; font-size: 12px; color: #222;">
+              <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
+            </p>
 
-    <p style="margin: 0 0 10px; font-size: 12px; color: #222;">
-      <strong>Şikayet Türü:</strong> ${data.sikayetTuruAdi || "-"}
-    </p>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+              <button 
+                id="btn-like"
+                title="Sorun Hala Var!"
+                style="
+                  width: 40px; height: 40px;
+                  background-color: #f0fdf4;
+                  border: 1.5px solid #22c55e;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  cursor: pointer;
+                  transition: background 0.3s, box-shadow 0.3s;
+                "
+                onmouseover="this.style.backgroundColor='#dcfce7'; this.style.boxShadow='0 0 8px #22c55e44'"
+                onmouseout="this.style.backgroundColor='#f0fdf4'; this.style.boxShadow='none'"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="#22c55e" viewBox="0 0 24 24" width="20" height="20">
+                  <path d="M14 9V5a3 3 0 0 0-6 0v4H5a1 1 0 0 0-.99 1.14l1.38 9A2 2 0 0 0 7.37 21h9.26a2 2 0 0 0 1.98-1.86l1.38-9A1 1 0 0 0 19 9h-5z"/>
+                </svg>
+              </button>
 
-    <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
-      <button 
-        id="btn-like"
-        title="Sorun Hala Var!"
-        style="
-          width: 40px; height: 40px;
-          background-color: #f0fdf4;
-          border: 1.5px solid #22c55e;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background 0.3s, box-shadow 0.3s;
-          onClick={handleIncrementDogrulama}
-        "
-        onmouseover="this.style.backgroundColor='#dcfce7'; this.style.boxShadow='0 0 8px #22c55e44'"
-        onmouseout="this.style.backgroundColor='#f0fdf4'; this.style.boxShadow='none'"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="#22c55e" viewBox="0 0 24 24" width="20" height="20">
-          <path d="M14 9V5a3 3 0 0 0-6 0v4H5a1 1 0 0 0-.99 1.14l1.38 9A2 2 0 0 0 7.37 21h9.26a2 2 0 0 0 1.98-1.86l1.38-9A1 1 0 0 0 19 9h-5z"/>
-        </svg>
-      </button>
-
-      <span style="
-        font-size: 13px;
-        font-weight: 500;
-        color: #22c55e;
-        background-color: #f0fdf4;
-        padding: 4px 10px;
-        border-radius: 20px;
-        border: 1px solid #bbf7d0;
-        box-shadow: inset 0 0 2px #bbf7d0;
-      ">
-        ${data.dogrulanmaSayisi}
-      </span>
-    </div>
-
-  </div>
-`;
+              <span style="
+                font-size: 13px;
+                font-weight: 500;
+                color: #22c55e;
+                background-color: #f0fdf4;
+                padding: 4px 10px;
+                border-radius: 20px;
+                border: 1px solid #bbf7d0;
+                box-shadow: inset 0 0 2px #bbf7d0;
+              ">
+                ${data.dogrulanmaSayisi}
+              </span>
+            </div>
+          </div>
+        `;
 
         popupDiv.querySelector("#btn-like").addEventListener("click", () => {
-  handleIncrementDogrulama(data); // data parametresini de buradan geçir
-});
+          handleIncrementDogrulama(data);
+        });
 
-        // Popup animasyonu
         setTimeout(() => {
           popupDiv.style.opacity = "1";
           popupDiv.style.transform = "translateY(0)";
         }, 10);
 
-        // Kapatma butonu işlevi
         popupDiv.querySelector("#popup-close-btn").onclick = () => {
           popupDiv.style.opacity = "0";
           popupDiv.style.transform = "translateY(10px)";
@@ -388,7 +391,6 @@ const handleIncrementDogrulama = async (data) => {
 
         setPopupInfo(data);
       } else {
-        // Popup'ı kapat
         popupDiv.style.opacity = "0";
         popupDiv.style.transform = "translateY(10px)";
         setTimeout(() => {
@@ -398,7 +400,6 @@ const handleIncrementDogrulama = async (data) => {
       }
     });
 
-    // Kullanıcı konumunu alma
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -406,10 +407,8 @@ const handleIncrementDogrulama = async (data) => {
           const lat = position.coords.latitude;
           const userCoord = fromLonLat([lon, lat]);
 
-          // Kullanıcının orijinal konumunu sakla
           setUserLocation([lon, lat]);
 
-          // Eğer harici bir koordinat seçilmediyse
           if (!selectedCoordinate) {
             addDraggableMarker(userCoord);
             map.getView().animate({ center: userCoord, zoom: 14 });
@@ -432,20 +431,16 @@ const handleIncrementDogrulama = async (data) => {
       setLocationError("Tarayıcınız konum servislerini desteklemiyor.");
     }
 
-    // Şikayetleri yükle
     loadComplaints();
 
-    // Temizleme fonksiyonu
     return () => map.setTarget(null);
   }, []);
 
-  // Sürüklenebilir işaretçi ekleme fonksiyonu
   const addDraggableMarker = (coord) => {
     if (!userMarkerSourceRef.current || !mapObjRef.current) return;
 
     userMarkerSourceRef.current.clear();
 
-    // Yeni işaretçi oluştur
     const marker = new Feature({ geometry: new Point(coord) });
 
     marker.setStyle(
@@ -460,13 +455,11 @@ const handleIncrementDogrulama = async (data) => {
 
     userMarkerSourceRef.current.addFeature(marker);
 
-    // Önceki sürükleme etkileşimini kaldır
     if (translateInteractionRef.current) {
       mapObjRef.current.removeInteraction(translateInteractionRef.current);
       translateInteractionRef.current = null;
     }
 
-    // Yeni sürükleme etkileşimi ekle
     const translate = new Translate({
       features: userMarkerSourceRef.current.getFeaturesCollection(),
       filter: (feature) => userMarkerSourceRef.current.getFeatures().includes(feature),
@@ -475,22 +468,18 @@ const handleIncrementDogrulama = async (data) => {
     mapObjRef.current.addInteraction(translate);
     translateInteractionRef.current = translate;
 
-    // Sürükleme bitince tetiklenecek olay
     translate.on("translateend", (e) => {
       const geom = e.features.item(0).getGeometry();
       const newCoord = toLonLat(geom.getCoordinates());
       
-      // Mesafe kontrolü
       if (userLocation) {
         const distance = getDistance(
           { latitude: userLocation[1], longitude: userLocation[0] },
           { latitude: newCoord[1], longitude: newCoord[0] }
         );
 
-        // Eğer izin verilen mesafe aşıldıysa
         if (distance > LIMIT_RADIUS) {
           toast.warning(`Konumunuzdan ${LIMIT_RADIUS} metre dışına çıkamazsınız.`);
-          // Marker'ı orijinal konumuna geri al
           geom.setCoordinates(fromLonLat(userLocation));
           onCoordinateSelect?.(userLocation);
           setCoords(userLocation);
@@ -499,14 +488,12 @@ const handleIncrementDogrulama = async (data) => {
         }
       }
 
-      // Yeni koordinatları güncelle
       onCoordinateSelect?.(newCoord);
       setCoords(newCoord);
       fetchAddress(newCoord[0], newCoord[1]);
     });
   };
 
-  // Seçili koordinat değiştiğinde tetiklenen efekt
   useEffect(() => {
     if (!selectedCoordinate || !mapObjRef.current) return;
 
@@ -517,16 +504,13 @@ const handleIncrementDogrulama = async (data) => {
     fetchAddress(selectedCoordinate[0], selectedCoordinate[1]);
   }, [selectedCoordinate]);
 
-  // Form açma/kapama fonksiyonu
   const toggleForm = () => {
     setIsFormOpen(!isFormOpen);
   };
 
-  // Form gönderme işlemi
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validasyonlar
     if (photos.length === 0) {
       toast.error("Lütfen en az bir fotoğraf seçin.");
       return;
@@ -536,7 +520,6 @@ const handleIncrementDogrulama = async (data) => {
       return;
     }
 
-    // Yakınlık kontrolü
     const selectedCategory = Kategori.find(k => k.id === parseInt(category));
     if (selectedCategory && currentComplaints.length > 0) {
       const isNearExisting = currentComplaints.some((c) => {
@@ -556,7 +539,6 @@ const handleIncrementDogrulama = async (data) => {
     setIsUploading(true);
 
     try {
-      // Fotoğraf yükleme işlemi
       const file = photos[0];
       const fileExt = file.name.split(".").pop();
       const fileName = `complaints/${Date.now()}.${fileExt}`;
@@ -567,12 +549,10 @@ const handleIncrementDogrulama = async (data) => {
 
       if (uploadError) throw uploadError;
 
-      // Yüklenen fotoğrafın URL'sini al
       const { data: { publicUrl } } = supabase.storage
         .from("sehirasistanimdata")
         .getPublicUrl(fileName);
 
-      // Token'dan kullanıcı ID'sini al
       const token = localStorage.getItem("token");
       const kullaniciid = getUserIdFromToken(token);
 
@@ -580,7 +560,6 @@ const handleIncrementDogrulama = async (data) => {
         throw new Error("Kullanıcı ID çözülemedi.");
       }
 
-      // Gönderilecek veriyi hazırla
       const body = {
         KullaniciId: kullaniciid,
         Baslik: title,
@@ -597,7 +576,6 @@ const handleIncrementDogrulama = async (data) => {
         CozenBirimId: null,
       };
 
-      // API'ye şikayeti gönder
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/Sikayet/Add",
         body,
@@ -610,7 +588,6 @@ const handleIncrementDogrulama = async (data) => {
       );
       toast.success("Şikayetiniz başarıyla gönderildi! 🎉");
 
-      // Formu sıfırla
       setTitle("");
       setDescription("");
       setCategory("1");
@@ -619,10 +596,8 @@ const handleIncrementDogrulama = async (data) => {
       setAddress("");
       setCoords([null, null]);
 
-      // Şikayetleri yeniden yükle
       loadComplaints();
     } catch (error) {
-      // Hata yönetimi
       if (error.response) {
         console.error("Backend hatası:", error.response.status, error.response.data);
         toast.error(`Şikayet gönderilirken backend hatası: ${error.response.status}`);
@@ -638,8 +613,9 @@ const handleIncrementDogrulama = async (data) => {
     }
   };
 
-  // Mobil cihazlarda form açıkken harita yüksekliğini ayarla
   const mapHeight = isMobile ? (isFormOpen ? "50vh" : "100vh") : "100vh";
+
+
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh" }}>
