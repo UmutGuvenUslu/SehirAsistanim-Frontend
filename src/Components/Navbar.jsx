@@ -29,7 +29,7 @@ export default function Navbar({ onSearchResult, userLocation }) {
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[1200px] px-4">
       <nav className="bg-white/30 backdrop-blur-md text-black px-6 py-3 rounded-full shadow-lg border border-white/20 flex items-center justify-between min-w-[300px]">
         {/* Logo */}
-        <span className="font-bold text-lg select-none">Şehir Asistanım</span>
+        <Link to="/"><span className="font-bold text-lg select-none">Şehir Asistanım</span></Link>
 
         {/* Desktop SearchBox */}
         <div className="hidden md:block ml-4 w-[300px]">
