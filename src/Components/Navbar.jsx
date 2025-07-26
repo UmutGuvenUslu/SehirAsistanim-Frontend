@@ -103,23 +103,7 @@ export default function Navbar({ onSearchResult, userLocation }) {
                       Profil
                     </Link>
 
-                    <Link
-                      to="/ayarlar"
-                      className="flex items-center gap-3 px-6 py-3 hover:bg-gray-100 transition-colors border-b border-gray-200 text-gray-700"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-gray-500 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2zm0-3a9 9 0 11-9 9 9 9 0 019-9z" />
-                      </svg>
-                      Ayarlar
-                    </Link>
+                   
 
                     {/* Çıkış Butonu */}
                     <button
