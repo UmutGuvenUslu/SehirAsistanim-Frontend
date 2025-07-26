@@ -181,6 +181,15 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     return;
   }
 
+    
+    const currentUserId = getUserIdFromToken(token);
+    
+    // Eğer şikayeti oluşturan kullanıcı ile giriş yapan kullanıcı aynıysa
+    if (data.kullaniciId && currentUserId && data.kullaniciId.toString() === currentUserId.toString()) {
+      toast.warning("Kendi şikayetinize oy veremezsiniz!");
+      return;
+    }
+
   try {
     const response = await axios.put(
       `https://sehirasistanim-backend-production.up.railway.app/SikayetDogrulama/IncrementDogrulama?sikayetId=${data.id}&kullanciId=${getUserIdFromToken(token)}`,
