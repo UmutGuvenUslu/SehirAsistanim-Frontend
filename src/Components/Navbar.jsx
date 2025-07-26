@@ -226,7 +226,6 @@ export default function Navbar({ onSearchResult, userLocation }) {
             <>
               <Link to="/sikayetlerim" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Şikayetlerim</Link>
               <Link to="/profil" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Profil</Link>
-              <Link to="/ayarlar" className="hover:text-gray-700 transition" onClick={() => setMenuOpen(false)}>Ayarlar</Link>
 
               <button
                 onClick={() => {
