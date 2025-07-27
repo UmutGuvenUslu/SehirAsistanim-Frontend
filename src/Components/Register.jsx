@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, useNavigate } from "react-router-dom"; // useNavigate eklendi
+import { Link, useNavigate } from "react-router-dom";
 import Modal from "./Modal";
 import axios from "axios";
 import photo from "./photo.jpg";
@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 // Bugünkü tarih (gelecek tarih seçimini engellemek için)
 const today = new Date().toISOString().split("T")[0];
 
-//Özel TC Validasyonu
+// Özel TC Validasyonu
 const isValidTCKN = (tc) => {
   if (!/^[1-9][0-9]{10}$/.test(tc)) return false;
 
@@ -47,7 +47,7 @@ const schema = z
 
     TelefonNo: z.string()
       .min(1, "Telefon numarası gerekli")
-      .transform((val) => val.replace(/\s/g, ''))
+      .transform((val) => val.replace(/\s/g, '')) // Boşlukları kaldır
       .refine((val) => /^05\d{9}$/.test(val), {
         message: "Geçerli bir telefon numarası girin (05xxxxxxxxx formatında)",
       }),
@@ -58,7 +58,7 @@ const schema = z
     DogumTarihi: z.string()
       .min(1, "Doğum tarihi gerekli")
       .refine((date) => {
-        if (!date) return false; // boşsa hata
+        if (!date) return false;
         const inputDate = new Date(date);
         const minDate = new Date("1950-01-01");
         const today = new Date();
@@ -67,7 +67,6 @@ const schema = z
         message: "Doğum tarihi 01.01.1950'den küçük ve bugünden ileri olamaz",
       }),
 
-    // Şifre: en az 6 karakter, bir harf, bir sayı ve sadece belirtilen özel karakterlerden biri
     Sifre: z.string()
       .min(6, "Şifre en az 6 karakter olmalı")
       .regex(
@@ -83,28 +82,84 @@ const schema = z
     path: ["SifreTekrar"],
   });
 
-
 export default function Register() {
   const [showModal, setShowModal] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
-  const [formData, setFormData] = useState(null); // Axios için veriyi sakla
-  const [loadingSubmit, setLoadingSubmit] = useState(false); // Kod gönderme için
-  const [loadingVerify, setLoadingVerify] = useState(false); // Doğrulama için
+  const [formData, setFormData] = useState(null);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
+  const [loadingVerify, setLoadingVerify] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const phoneInputRef = useRef(null);
 
-  const navigate = useNavigate(); // useNavigate hook'u
+  const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue
   } = useForm({
     resolver: zodResolver(schema),
   });
 
+  const formatPhoneNumber = (value) => {
+    if (!value) return value;
+
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    if (phoneNumber.length <= 4) return phoneNumber;
+    if (phoneNumber.length <= 7) {
+      return `${phoneNumber.slice(0, 4)} ${phoneNumber.slice(4)}`;
+    }
+    if (phoneNumber.length <= 9) {
+      return `${phoneNumber.slice(0, 4)} ${phoneNumber.slice(4, 7)} ${phoneNumber.slice(7)}`;
+    }
+    return `${phoneNumber.slice(0, 4)} ${phoneNumber.slice(4, 7)} ${phoneNumber.slice(7, 9)} ${phoneNumber.slice(9, 11)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const input = e.target;
+    const selectionStart = input.selectionStart;
+    const value = input.value;
+
+    const formattedValue = formatPhoneNumber(value);
+    input.value = formattedValue;
+
+    // Kursor pozisyonunu ayarla
+    if (value.length < formattedValue.length) {
+      // Karakter ekleniyorsa
+      if (value.length === 4) input.setSelectionRange(5, 5);
+      else if (value.length === 8) input.setSelectionRange(9, 9);
+      else if (value.length === 11) input.setSelectionRange(12, 12);
+    } else {
+      // Karakter siliniyorsa
+      input.setSelectionRange(selectionStart, selectionStart);
+    }
+
+    // Form değerini güncelle (boşluksuz olarak)
+    setValue("TelefonNo", formattedValue.replace(/\s/g, ''), { shouldValidate: true });
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    if (e.key === 'Backspace') {
+      const input = e.target;
+      const value = input.value;
+      const selectionStart = input.selectionStart;
+
+      // Boşluğa basılırsa, boşluğu ve önceki karakteri sil
+      if (value[selectionStart - 1] === ' ') {
+        e.preventDefault();
+        const newValue = value.substring(0, selectionStart - 2) + value.substring(selectionStart);
+        input.value = formatPhoneNumber(newValue.replace(/[^\d]/g, ''));
+        input.setSelectionRange(selectionStart - 2, selectionStart - 2);
+        setValue("TelefonNo", input.value.replace(/\s/g, ''), { shouldValidate: true });
+      }
+    }
+  };
+
   const onSubmit = async (data) => {
     setLoadingSubmit(true);
     try {
-      // 1. Önce e-posta kayıtlı mı kontrol et
       const checkResponse = await axios.get(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/IsEmailRegistered",
         { params: { email: data.Email } }
@@ -113,24 +168,21 @@ export default function Register() {
       if (checkResponse.data.emailVar) {
         toast.error("Bu e-posta adresi zaten kayıtlı!");
         setLoadingSubmit(false);
-        return; // Burada dur, doğrulama kodu göndermiyoruz
+        return;
       }
 
-      // 2. Eğer kayıtlı değilse, doğrulama kodu gönder
       await axios.post(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/send-verification-code",
         null,
-        {
-          params: { email: data.Email },
-        }
+        { params: { email: data.Email } }
       );
-      setFormData(data); // Kod doğrulaması sonrası kullanılmak üzere sakla
+      setFormData(data);
       setShowModal(true);
       toast.success("Doğrulama kodu e-postanıza gönderildi!");
     } catch (err) {
       toast.error("Kod gönderilirken hata oluştu: " + err.response?.data?.message);
     } finally {
-      setLoadingSubmit(false); // İşlem bitti
+      setLoadingSubmit(false);
     }
   };
 
@@ -146,10 +198,7 @@ export default function Register() {
       );
       toast.success("Kayıt başarılı: " + response.data.message);
       setShowModal(false);
-
-      // Kayıt başarılıysa giriş sayfasına yönlendir
       navigate("/girisyap");
-
     } catch (err) {
       toast.error("Kayıt başarısız: " + err.response?.data?.message);
     } finally {
@@ -215,7 +264,15 @@ export default function Register() {
             </div>
 
             <div>
-              <input {...register("TelefonNo")} placeholder="05xx xxx xx xx" className="w-full border border-gray-300 rounded px-3 py-2" />
+              <input
+                {...register("TelefonNo")}
+                ref={phoneInputRef}
+                placeholder="05xx xxx xx xx"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                onChange={handlePhoneChange}
+                onKeyDown={handlePhoneKeyDown}
+                maxLength={14} // 05xx xxx xx xx formatı için
+              />
               <p className="text-red-500 text-sm">{errors.TelefonNo?.message}</p>
             </div>
 
@@ -229,33 +286,55 @@ export default function Register() {
               <p className="text-red-500 text-sm">{errors.Cinsiyet?.message}</p>
             </div>
 
-            {/* Doğum tarihi inputu - max bugünkü tarih */}
             <input
               type="date"
               {...register("DogumTarihi")}
-              max={today} // Gelecek tarih seçimini engeller
+              max={today}
               className="w-full border border-gray-300 rounded px-3 py-2"
             />
             <p className="text-red-500 text-sm">{errors.DogumTarihi?.message}</p>
 
-            <div>
-              <input type="password" {...register("Sifre")} placeholder="Şifrenizi girin" className="w-full border border-gray-300 rounded px-3 py-2" />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                {...register("Sifre")}
+                placeholder="Şifrenizi girin"
+                className="w-full border border-gray-300 rounded px-3 py-2 pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-2.5 text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
               <p className="text-red-500 text-sm">{errors.Sifre?.message}</p>
             </div>
 
-            <div>
-              <input type="password" {...register("SifreTekrar")} placeholder="Şifrenizi tekrar girin" className="w-full border border-gray-300 rounded px-3 py-2" />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                {...register("SifreTekrar")}
+                placeholder="Şifrenizi tekrar girin"
+                className="w-full border border-gray-300 rounded px-3 py-2 pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-2.5 text-gray-500"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? "🙈" : "👁️"}
+              </button>
               <p className="text-red-500 text-sm">{errors.SifreTekrar?.message}</p>
             </div>
 
             <button
               type="submit"
-              disabled={loadingSubmit} // İşlem devam ediyorsa tıklanamaz
+              disabled={loadingSubmit}
               className={`w-full bg-black text-white py-2 rounded transition flex items-center justify-center 
                 ${loadingSubmit ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700 cursor-pointer"}`}
             >
               {loadingSubmit ? (
-                // Tailwind spinner
                 <svg
                   className="animate-spin h-5 w-5 mr-2 text-white"
                   xmlns="http://www.w3.org/2000/svg"
