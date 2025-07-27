@@ -25,6 +25,7 @@ import Navbar from "./Components/Navbar";
 import AuthLayout from "./Layouts/AuthLayout";
 import MainLayout from "./Layouts/MainLayout";
 import { AuthContext } from "./Context/AuthContext";
+import RolYonetimi from "./Components/AdminPages/RolYonetimi";
 
 // Admin yetkilendirme kontrolü
 function ProtectedRoute({ children, requiredRole }) {
@@ -174,6 +175,7 @@ function App() {
           <Route path="birimyonetimi" element={<DepartmentManagement />} />
           <Route path="sikayetcozumleri" element={<ComplaintSolutions />} />
           <Route path="sikayetturuyonetimi" element={<ComplaintTypes />} />
+          <Route path="rollistesi" element={<RolYonetimi />} />
         </Route>
 
         <Route path="/404" element={<NotFoundPage />} />

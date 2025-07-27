@@ -8,6 +8,7 @@ import {
   ShoppingBagIcon,
   Cog6ToothIcon,
   ChartBarIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 
 // Token'dan isim bilgisini alan fonksiyon
@@ -190,6 +191,13 @@ export default function AdminPanel() {
               collapsed={isDesktopCollapsed && !isMobileSidebarOpen}
               onClick={handleSidebarLinkClick}
             />
+            <SidebarLink
+              to="/adminpanel/rollistesi"
+              icon={<KeyIcon className="h-5 w-5" />} 
+              text="Rol Listesi"
+              collapsed={isDesktopCollapsed && !isMobileSidebarOpen}
+              onClick={handleSidebarLinkClick}
+            />
           </ul>
         </nav>
       </aside>
