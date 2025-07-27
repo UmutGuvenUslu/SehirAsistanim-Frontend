@@ -628,7 +628,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       loadComplaints();
     } catch (error) {
       if (error.response) {
-        console.error("Backend hatası:", error.response.status, error.response.data);
+        console.error("Kullanım şartlarımıza göre küfür, argo veya nefret söylemi içeren içerikler kabul edilmemektedir");
         toast.error(`Şikayet metninde uygunsuz ifadeler tespit edildi. Lütfen düzeltin.`);
       } else if (error.request) {
         console.error("İstek yapıldı, yanıt alınamadı:", error.request);
