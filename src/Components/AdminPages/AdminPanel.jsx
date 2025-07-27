@@ -10,10 +10,68 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
+// Token'dan isim bilgisini alan fonksiyon
+const getUserNameFromToken = (token) => {
+  try {
+    if (!token) return "Kullanıcı";
+    const parts = token.split(".");
+    if (parts.length !== 3) return "Kullanıcı";
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const data = JSON.parse(jsonPayload);
+
+    return (
+      data.Name ||
+      data.name ||
+      data["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+      "Kullanıcı"
+    );
+  } catch (error) {
+    console.error("Token çözümleme hatası (isim):", error);
+    return "Kullanıcı";
+  }
+};
+
+// Token'dan email bilgisini alan fonksiyon
+const getUserEmailFromToken = (token) => {
+  try {
+    if (!token) return "";
+    const parts = token.split(".");
+    if (parts.length !== 3) return "";
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const data = JSON.parse(jsonPayload);
+
+    return (
+      data.Email ||
+      data.email ||
+      data["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ||
+      ""
+    );
+  } catch (error) {
+    console.error("Token çözümleme hatası (email):", error);
+    return "";
+  }
+};
+
 export default function AdminPanel() {
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setDesktopCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState("Kullanıcı");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
   const menuRef = useRef(null);
   const navigate = useNavigate();
 
@@ -29,6 +87,16 @@ export default function AdminPanel() {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const name = getUserNameFromToken(token);
+      const email = getUserEmailFromToken(token);
+      setCurrentUserName(name);
+      setCurrentUserEmail(email);
+    }
+  }, []);
+
+  useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
@@ -39,7 +107,6 @@ export default function AdminPanel() {
   }, []);
 
   return (
-    // Tam ekran yüksekliği ve yatay flex düzen
     <div className="min-h-screen flex bg-gray-100 relative">
       {/* Mobil Blur Overlay */}
       {isMobileSidebarOpen && (
@@ -85,10 +152,7 @@ export default function AdminPanel() {
           </button>
         </div>
 
-        <nav
-          className="flex-1 px-4 overflow-y-auto"
-          style={{ minHeight: 0 }}
-        >
+        <nav className="flex-1 px-4 overflow-y-auto" style={{ minHeight: 0 }}>
           <ul className="space-y-2 mt-6">
             <SidebarLink
               to="/adminpanel"
@@ -139,7 +203,7 @@ export default function AdminPanel() {
           </button>
           <h1 className="text-lg font-semibold">Yönetim Paneli</h1>
           <div className="flex items-center gap-4 relative" ref={menuRef}>
-            <span>Admin</span>
+            <span>{currentUserName}</span>
             <img
               src={user}
               alt="Profile"
@@ -149,8 +213,8 @@ export default function AdminPanel() {
             {menuOpen && (
               <div className="absolute top-12 right-0 bg-white rounded-md shadow-lg w-48 p-2 z-50">
                 <div className="px-3 py-2 border-b border-gray-200">
-                  <p className="font-semibold">Ahmet Yılmaz</p>
-                  <p className="text-sm text-gray-500">ahmet@example.com</p>
+                  <p className="font-semibold">{currentUserName}</p>
+                  <p className="text-sm text-gray-500">{currentUserEmail}</p>
                 </div>
                 <ul className="py-2">
                   <li
@@ -171,7 +235,7 @@ export default function AdminPanel() {
           </div>
         </header>
 
-        {/* Alt Rotalar için Outlet */}
+        {/* Alt Rotalar */}
         <main className="p-6 flex-1 overflow-auto">
           <Outlet />
         </main>

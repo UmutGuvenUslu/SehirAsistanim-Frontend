@@ -25,20 +25,10 @@ export default function Dashboard() {
   const [resolvedComplaints, setResolvedComplaints] = useState(0);
   const [pendingComplaints, setPendingComplaints] = useState(0);
   const [complaints, setComplaints] = useState([]);
-  const [popupContent, setPopupContent] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-
     Promise.all([
       axios.get("https://sehirasistanim-backend-production.up.railway.app/Kullanici/TotalKullaniciSayisi", {
         headers: { Authorization: `Bearer ${token}` },
@@ -56,26 +46,17 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ])
-      .then(
-        ([
-          totalUsersRes,
-          totalComplaintsRes,
-          resolvedComplaintsRes,
-          pendingComplaintsRes,
-          complaintsRes,
-        ]) => {
-          setTotalUsers(totalUsersRes.data ?? 0);
-          setTotalComplaints(totalComplaintsRes.data ?? 0);
-          setResolvedComplaints(resolvedComplaintsRes.data ?? 0);
-          setPendingComplaints(pendingComplaintsRes.data ?? 0);
-
-          const data = Array.isArray(complaintsRes.data) ? complaintsRes.data : [];
-          setComplaints(data);
-        }
-      )
+      .then(([totalUsersRes, totalComplaintsRes, resolvedComplaintsRes, pendingComplaintsRes, complaintsRes]) => {
+        setTotalUsers(totalUsersRes.data ?? 0);
+        setTotalComplaints(totalComplaintsRes.data ?? 0);
+        setResolvedComplaints(resolvedComplaintsRes.data ?? 0);
+        setPendingComplaints(pendingComplaintsRes.data ?? 0);
+        setComplaints(Array.isArray(complaintsRes.data) ? complaintsRes.data : []);
+      })
       .catch((err) => console.error("Veriler çekilemedi:", err));
   }, []);
 
+  // Harita ayarları
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -84,58 +65,61 @@ export default function Dashboard() {
 
     const map = new Map({
       target: mapRef.current,
-      layers: [new TileLayer({ source: new OSM(), attributions: [] }), vectorLayerRef.current],
+      layers: [new TileLayer({ source: new OSM({ attributions: [] }) }), vectorLayerRef.current],
       view: new View({
         center: fromLonLat([35.2433, 38.9637]),
-        zoom: isMobile ? 5 : 6, // Mobilde biraz daha uzak zoom
+        zoom: 6,
       }),
       controls: [],
     });
 
     mapObjRef.current = map;
 
-    // Haritaya tıklanınca popup içeriğini güncelle
-    map.on("click", (evt) => {
-      const feature = map.forEachFeatureAtPixel(evt.pixel, (feat) => feat);
-      if (feature) {
-        const data = feature.get("data");
-        if (data) {
-          setPopupContent(data);
-        }
-      } else {
-        setPopupContent(null);
+    map.on("singleclick", (evt) => {
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { hitTolerance: 10 });
+      if (!feature) {
+        setSelectedComplaint(null);
+        return;
       }
+      const data = feature.get("data");
+      setSelectedComplaint(data);
     });
 
     return () => map.setTarget(undefined);
-  }, [isMobile]);
+  }, []);
 
+  // Harita boyut güncelleme (mobilde kaybolmayı engellemek için)
+  useEffect(() => {
+    if (mapObjRef.current) {
+      setTimeout(() => {
+        mapObjRef.current.updateSize();
+      }, 150);
+    }
+  }, [complaints, window.innerWidth]);
+
+  // Marker'lar
   useEffect(() => {
     if (!mapObjRef.current || !vectorSourceRef.current) return;
-
     const vectorSource = vectorSourceRef.current;
     vectorSource.clear();
 
     complaints.forEach((c) => {
       if (!c.longitude || !c.latitude) return;
-
       const feature = new Feature({
         geometry: new Point(fromLonLat([c.longitude, c.latitude])),
         data: c,
       });
-
       feature.setStyle(
         new Style({
           image: new Icon({
             src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-            scale: isMobile ? 0.04 : 0.05, // Mobilde biraz daha küçük ikon
+            scale: 0.05,
           }),
         })
       );
-
       vectorSource.addFeature(feature);
     });
-  }, [complaints, isMobile]);
+  }, [complaints]);
 
   const typeDistribution = (() => {
     try {
@@ -150,162 +134,81 @@ export default function Dashboard() {
     }
   })();
 
- return (
-  <>
-    {/* İstatistik Kartları */}
-    <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <StatCard title="Toplam Kullanıcı" value={totalUsers} color="blue" />
-      <StatCard title="Toplam Şikayet" value={totalComplaints} color="green" />
-      <StatCard title="Çözülen Şikayetler" value={resolvedComplaints} color="purple" />
-      <StatCard title="Bekleyen Şikayetler" value={pendingComplaints} color="orange" />
-    </section>
+  return (
+    <>
+      {/* İstatistik Kartları */}
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Toplam Kullanıcı" value={totalUsers} color="blue" />
+        <StatCard title="Toplam Şikayet" value={totalComplaints} color="green" />
+        <StatCard title="Çözülen Şikayetler" value={resolvedComplaints} color="purple" />
+        <StatCard title="Bekleyen Şikayetler" value={pendingComplaints} color="orange" />
+      </section>
 
-    {/* Harita ve Sağdaki chartlar */}
-    <section className="mt-6">
-      {isMobile ? (
-        // Mobil görünüm - Harita ve chartlar üst üste
-        <div className="flex flex-col gap-6">
-          {/* Harita */}
-          <div className="bg-white rounded-lg shadow-lg w-full h-[300px] relative">
-            <div ref={mapRef} className="w-full h-full rounded-lg" />
-            
-            {/* Popup */}
-            {popupContent && (
-              <div className="bg-white rounded shadow-lg p-4 absolute z-50 top-12 left-12"
-                style={{
-                  minWidth: "250px",
-                  maxWidth: "300px",
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                }}
-              >
-                <button
-                  onClick={() => setPopupContent(null)}
-                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold"
-                  aria-label="Close popup"
-                  style={{ lineHeight: 1 }}
-                >
-                  &times;
-                </button>
-                <h3 className="font-bold mb-2 text-center">{popupContent.baslik}</h3>
-                <p className="text-sm mb-1 text-center">{popupContent.aciklama}</p>
-                <p className="text-xs text-gray-500 mb-1 text-center">
-                  Gönderilme Tarihi: {new Date(popupContent.gonderilmeTarihi).toLocaleString()}
-                </p>
-                <p className="text-xs font-semibold mb-2 text-center">Durum: {popupContent.durum}</p>
-                {popupContent.fotoUrl && (
-                  <div className="flex justify-center">
-                    <img
-                      src={popupContent.fotoUrl}
-                      alt={popupContent.baslik}
-                      className="w-full max-h-40 object-cover rounded"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+      {/* Harita + Chartlar (tek responsive layout) */}
+      <section className="mt-6 flex flex-col md:flex-row gap-6">
+        {/* Harita */}
+        <div className="bg-white rounded-lg shadow-lg w-full md:w-[70%] relative" style={{ height: "50vh" }}>
+          <div ref={mapRef} className="w-full h-full rounded-lg" />
 
-          {/* Chartlar */}
-          <div className="flex flex-col gap-4">
-            <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-              <h3 className="text-lg font-semibold mb-4 text-center">
-                Şikayet Türlerine Göre Dağılım
-              </h3>
-              <div className="w-full h-[250px] flex justify-center">
-                <ComplaintPieChart data={typeDistribution} />
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-              <h3 className="text-lg font-semibold mb-4 text-center">
-                Çözülme Oranı
-              </h3>
-              <div className="w-full h-[250px] flex justify-center">
-                <ComplaintSolvedRateChart data={complaints} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // Masaüstü görünüm - Orijinal layout
-        <div className="flex flex-col md:flex-row gap-6 h-[500px]">
-          {/* Harita - %70 genişlik */}
-          <div className="bg-white rounded-lg shadow-lg md:w-[70%] h-full relative">
-            <div ref={mapRef} className="w-full h-full rounded-lg" />
-
-            {/* Popup sol üst köşeye sabit */}
+          {/* Popup (Sol Üstte Sabit) */}
+          {selectedComplaint && (
             <div
-              className="bg-white rounded shadow-lg p-4 absolute z-50"
+              className="absolute z-50 bg-white rounded-lg shadow-lg p-4"
               style={{
-                display: popupContent ? "block" : "none",
                 top: "12px",
                 left: "12px",
                 minWidth: "250px",
                 maxWidth: "300px",
                 maxHeight: "400px",
                 overflowY: "auto",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                opacity: 1,
+                transform: "translateY(0)",
+                transition: "opacity 0.3s ease, transform 0.3s ease",
               }}
             >
-              {/* Çarpı butonu */}
               <button
-                onClick={() => setPopupContent(null)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold"
-                aria-label="Close popup"
+                onClick={() => setSelectedComplaint(null)}
+                className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow hover:bg-red-600"
                 style={{ lineHeight: 1 }}
               >
-                &times;
+                ×
               </button>
-
-              {popupContent && (
-                <>
-                  <h3 className="font-bold mb-2">{popupContent.baslik}</h3>
-                  <p className="text-sm mb-1">{popupContent.aciklama}</p>
-                  <p className="text-xs text-gray-500 mb-1">
-                    Gönderilme Tarihi: {new Date(popupContent.gonderilmeTarihi).toLocaleString()}
-                  </p>
-                  <p className="text-xs font-semibold mb-2">Durum: {popupContent.durum}</p>
-                  {popupContent.fotoUrl && (
-                    <img
-                      src={popupContent.fotoUrl}
-                      alt={popupContent.baslik}
-                      className="w-full max-h-40 object-cover rounded"
-                    />
-                  )}
-                </>
-              )}
+              <img
+                src={selectedComplaint.fotoUrl || "https://via.placeholder.com/240x130?text=Görsel+Yok"}
+                alt={selectedComplaint.baslik}
+                className="w-full h-32 object-cover rounded mb-2"
+              />
+              <h3 className="font-semibold text-base mb-1">{selectedComplaint.baslik}</h3>
+              <p className="text-sm text-gray-600 mb-1">{selectedComplaint.aciklama}</p>
+              <p className="text-xs text-gray-500 mb-1">
+                Gönderilme: {new Date(selectedComplaint.gonderilmeTarihi).toLocaleString()}
+              </p>
+              <p className="text-sm font-semibold mb-2">Durum: {selectedComplaint.durum}</p>
+              {/* Doğrulanma Sayısı */}
+              <p
+                className="text-sm font-medium text-green-600 text-center bg-green-50 py-1 px-3 rounded-full border border-green-200 shadow-inner"
+                style={{ display: "inline-block", marginTop: "6px" }}
+              >
+                Doğrulanma: {selectedComplaint.dogrulanmaSayisi || 0}
+              </p>
             </div>
+          )}
+        </div>
+
+        {/* Chartlar */}
+        <div className="flex flex-col gap-4 md:w-[30%]">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-start justify-center flex-1">
+            <h3 className="text-lg font-semibold mb-4">Şikayet Türlerine Göre Dağılım</h3>
+            <ComplaintPieChart data={typeDistribution} />
           </div>
-
-          {/* Sağdaki chartlar - %30 genişlik, üst üste */}
-          <div className="flex flex-col gap-4 md:w-[30%] h-full">
-            {/* Üstteki chart */}
-            <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-start justify-center flex-1">
-              <h3 className="text-lg font-semibold mb-4 text-left">
-                Şikayet Türlerine Göre Dağılım
-              </h3>
-              <div className="flex justify-center w-full h-full">
-                <ComplaintPieChart data={typeDistribution} />
-              </div>
-            </div>
-
-            {/* Alttaki chart */}
-            <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-start justify-center flex-1">
-              <h3 className="text-lg font-semibold mb-4 text-left">
-                Çözülme Oranı
-              </h3>
-              <div className="flex justify-center w-full h-full">
-                <ComplaintSolvedRateChart data={complaints} />
-              </div>
-            </div>
+          <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-start justify-center flex-1">
+            <h3 className="text-lg font-semibold mb-4">Çözülme Oranı</h3>
+            <ComplaintSolvedRateChart data={complaints} />
           </div>
         </div>
-      )}
-    </section>
-  </>
-);
+      </section>
+    </>
+  );
 }
 
 function StatCard({ title, value, color }) {
