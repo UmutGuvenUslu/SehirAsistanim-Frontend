@@ -1,77 +1,113 @@
-import { useState } from "react";
-import { toast } from "react-toastify";
-import userImg from "../user.png"; // Profil resmi (mevcut resim)
+import React, { useContext, useState, useEffect } from "react";
+import { AuthContext } from "../../Context/AuthContext"; 
+import { useNavigate } from "react-router-dom";  // Yönlendirme için
+import axios from "axios";
+import {
+  UserIcon,
+  EnvelopeIcon,
+  IdentificationIcon,
+  CalendarDaysIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
+
+// JWT çözümleme
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (err) {
+    console.error("JWT çözümleme hatası:", err);
+    return null;
+  }
+}
 
 export default function AdminProfile() {
-    const [user, setUser] = useState({
-        name: "Ahmet Yılmaz",
-        email: "ahmet@example.com",
-        role: "Admin",
-    });
+  const { token, logout } = useContext(AuthContext);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate(); // yönlendirme için hook
 
-    const [password, setPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
+  useEffect(() => {
+    if (!token) return;
 
-    const handleSavePassword = () => {
-        if (!password || !newPassword) {
-            toast.error("Lütfen tüm alanları doldurun.");
-            return;
+    const decoded = parseJwt(token);
+    const userId = decoded?.nameid || decoded?.sub || decoded?.id;
+
+    if (!userId) {
+      console.warn("Kullanıcı ID'si çözülemedi.");
+      return;
+    }
+
+    axios
+      .get(
+        `https://sehirasistanim-backend-production.up.railway.app/Kullanici/GetById/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
-        toast.success("Şifre başarıyla güncellendi! 🔐 (Backend entegrasyonu eklenebilir.)");
-        setPassword("");
-        setNewPassword("");
-    };
+      )
+      .then((res) => setUser(res.data))
+      .catch((err) => console.error("Kullanıcı verisi alınamadı:", err));
+  }, [token]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    sessionStorage.clear();
+    navigate("/girisyap");
+  };
+
+  if (!user) {
     return (
-        <div className="flex justify-center items-center min-h-[80vh]">
-            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-2xl w-full space-y-8">
-                {/* Profil Başlığı */}
-                <div className="flex items-center gap-6">
-                    <img
-                        src={userImg}
-                        alt="Profil"
-                        className="w-24 h-24 rounded-full"
-                    />
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800">{user.name}</h2>
-                        <p className="text-gray-600">{user.email}</p>
-                        <span className="inline-block mt-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-full">
-                            {user.role}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Şifre Değiştirme Alanı */}
-                <div className="space-y-4">
-                    <h3 className="text-2xl font-semibold text-gray-700">Şifre Değiştir</h3>
-                    <div>
-                        <label className="block text-gray-600 text-sm mb-1">Mevcut Şifre</label>
-                        <input
-                            type="password"
-                            placeholder="Mevcut Şifre"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="border p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-orange-400"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-gray-600 text-sm mb-1">Yeni Şifre</label>
-                        <input
-                            type="password"
-                            placeholder="Yeni Şifre"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="border p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-orange-400"
-                        />
-                    </div>
-                    <button
-                        onClick={handleSavePassword}
-                        className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
-                    >
-                        Şifreyi Güncelle
-                    </button>
-                </div>
-            </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-gray-700">
+        Yükleniyor...
+      </div>
     );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col items-center py-16 px-6">
+      <h1 className="text-3xl font-bold text-gray-800 mb-10">Admin Profilim</h1>
+
+      {/* Kullanıcı Bilgileri */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl w-full">
+        {/* İlk Satır */}
+        <InfoCard icon={UserIcon} title="Ad" value={user.isim} />
+        <InfoCard icon={UserIcon} title="Soyad" value={user.soyisim} />
+        <InfoCard icon={IdentificationIcon} title="TC Kimlik" value={user.tc} />
+
+        {/* İkinci Satır */}
+        <InfoCard icon={EnvelopeIcon} title="E-posta" value={user.email} />
+        <InfoCard icon={ShieldCheckIcon} title="Rol" value="Admin" />
+        <InfoCard
+          icon={CalendarDaysIcon}
+          title="Doğum Tarihi"
+          value={user.dogumTarihi?.split("T")[0]}
+        />
+      </section>
+
+      {/* Çıkış Butonu */}
+      <button
+        onClick={handleLogout}
+        className="mt-12 bg-red-500 text-white px-8 py-3 rounded-xl hover:bg-red-600 transition cursor-pointer"
+      >
+        Çıkış Yap
+      </button>
+    </div>
+  );
+}
+
+// Bilgi Kartı
+function InfoCard({ icon: Icon, title, value }) {
+  return (
+    <div className="flex flex-col items-center bg-white shadow-md p-6 rounded-2xl hover:shadow-xl transition">
+      <Icon className="h-10 w-10 text-orange-500 mb-3" />
+      <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
+      <p className="text-gray-600">{value || "—"}</p>
+    </div>
+  );
 }

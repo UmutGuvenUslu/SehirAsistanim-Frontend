@@ -198,42 +198,55 @@ export default function AdminPanel() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Üstbar */}
         <header className="h-16 bg-white shadow flex items-center justify-between px-6 relative flex-shrink-0">
-          <button className="lg:hidden" onClick={() => setMobileSidebarOpen(true)}>
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-          <h1 className="text-lg font-semibold">Yönetim Paneli</h1>
-          <div className="flex items-center gap-4 relative" ref={menuRef}>
-            <span>{currentUserName}</span>
-            <img
-              src={user}
-              alt="Profile"
-              className="w-8 h-8 rounded-full cursor-pointer"
-              onClick={() => setMenuOpen(!menuOpen)}
-            />
-            {menuOpen && (
-              <div className="absolute top-12 right-0 bg-white rounded-md shadow-lg w-48 p-2 z-50">
-                <div className="px-3 py-2 border-b border-gray-200">
-                  <p className="font-semibold">{currentUserName}</p>
-                  <p className="text-sm text-gray-500">{currentUserEmail}</p>
-                </div>
-                <ul className="py-2">
-                  <li
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => navigate("/adminpanel/profil")}
-                  >
-                    Profilim
-                  </li>
-                  <li
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-red-500"
-                    onClick={handleLogout}
-                  >
-                    Çıkış Yap
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
-        </header>
+  <button className="lg:hidden" onClick={() => setMobileSidebarOpen(true)}>
+    <Bars3Icon className="h-6 w-6" />
+  </button>
+  <h1 className="text-lg font-semibold">Yönetim Paneli</h1>
+  <div className="flex items-center gap-4 relative" ref={menuRef}>
+    <span>{currentUserName}</span>
+
+    {/* Profil Resmi */}
+    <img
+      src={user}
+      alt="Profile"
+      className="w-8 h-8 rounded-full cursor-pointer"
+      onClick={() => setMenuOpen(!menuOpen)}
+    />
+
+    {/* Açılır Menü */}
+    {menuOpen && (
+      <div className="absolute top-12 right-0 bg-white rounded-md shadow-lg w-48 p-2 z-50">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <p className="font-semibold">{currentUserName}</p>
+          <p className="text-xs text-gray-500 break-all max-w-[180px]">
+            {currentUserEmail}
+          </p>
+        </div>
+        <ul className="py-2">
+          <li
+            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => navigate("/adminpanel/profil")}
+          >
+            Profilim
+          </li>
+          <li
+            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => navigate("/")}
+          >
+            Kullanıcı Paneli
+          </li>
+          <li
+            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-red-500"
+            onClick={handleLogout}
+          >
+            Çıkış Yap
+          </li>
+        </ul>
+      </div>
+    )}
+  </div>
+</header>
+
 
         {/* Alt Rotalar */}
         <main className="p-6 flex-1 overflow-auto">
