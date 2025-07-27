@@ -47,22 +47,25 @@ const schema = z
 
     TelefonNo: z.string()
       .min(1, "Telefon numarası gerekli")
-      .regex(/^05\d{9}$/, "Geçerli bir telefon numarası girin"),
+      .transform((val) => val.replace(/\s/g, ''))
+      .refine((val) => /^05\d{9}$/.test(val), {
+        message: "Geçerli bir telefon numarası girin (05xxxxxxxxx formatında)",
+      }),
 
     Cinsiyet: z.string()
       .min(1, "Cinsiyet seçiniz"),
 
     DogumTarihi: z.string()
-  .min(1, "Doğum tarihi gerekli")
-  .refine((date) => {
-    if (!date) return false; // boşsa hata
-    const inputDate = new Date(date);
-    const minDate = new Date("1950-01-01");
-    const today = new Date();
-    return inputDate >= minDate && inputDate <= today;
-  }, {
-    message: "Doğum tarihi 01.01.1950'den küçük ve bugünden ileri olamaz",
-  }),
+      .min(1, "Doğum tarihi gerekli")
+      .refine((date) => {
+        if (!date) return false; // boşsa hata
+        const inputDate = new Date(date);
+        const minDate = new Date("1950-01-01");
+        const today = new Date();
+        return inputDate >= minDate && inputDate <= today;
+      }, {
+        message: "Doğum tarihi 01.01.1950'den küçük ve bugünden ileri olamaz",
+      }),
 
     // Şifre: en az 6 karakter, bir harf, bir sayı ve sadece belirtilen özel karakterlerden biri
     Sifre: z.string()
@@ -101,7 +104,7 @@ export default function Register() {
   const onSubmit = async (data) => {
     setLoadingSubmit(true);
     try {
-       // 1. Önce e-posta kayıtlı mı kontrol et
+      // 1. Önce e-posta kayıtlı mı kontrol et
       const checkResponse = await axios.get(
         "https://sehirasistanim-backend-production.up.railway.app/api/auth/IsEmailRegistered",
         { params: { email: data.Email } }
@@ -127,7 +130,7 @@ export default function Register() {
     } catch (err) {
       toast.error("Kod gönderilirken hata oluştu: " + err.response?.data?.message);
     } finally {
-       setLoadingSubmit(false); // İşlem bitti
+      setLoadingSubmit(false); // İşlem bitti
     }
   };
 
@@ -218,13 +221,13 @@ export default function Register() {
 
             <div>
               <select {...register("Cinsiyet")} className="w-full border border-gray-300 rounded px-3 py-2 text-gray-500">
-              <option value="">Cinsiyet seçiniz</option>
-              <option value="Kadın">Kadın</option>
-              <option value="Erkek">Erkek</option>
-              <option value="Belirtmek istemiyorum">Belirtmek istemiyorum</option>
-            </select>
-             <p className="text-red-500 text-sm">{errors.Cinsiyet?.message}</p>
-            </div>            
+                <option value="">Cinsiyet seçiniz</option>
+                <option value="Kadın">Kadın</option>
+                <option value="Erkek">Erkek</option>
+                <option value="Belirtmek istemiyorum">Belirtmek istemiyorum</option>
+              </select>
+              <p className="text-red-500 text-sm">{errors.Cinsiyet?.message}</p>
+            </div>
 
             {/* Doğum tarihi inputu - max bugünkü tarih */}
             <input
@@ -290,8 +293,8 @@ export default function Register() {
           code={verificationCode}
           setCode={setVerificationCode}
           onConfirm={handleVerifyAndRegister}
-          onCancel={() => {setShowModal(false);  setVerificationCode("");}}
-          loadingVerify = {loadingVerify}
+          onCancel={() => { setShowModal(false); setVerificationCode(""); }}
+          loadingVerify={loadingVerify}
         />
       )}
     </div>
