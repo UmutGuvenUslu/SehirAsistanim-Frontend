@@ -13,6 +13,7 @@ import DataTable from "react-data-table-component";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { defaults as defaultControls } from "ol/control";
 
 // SVG Icons
 const CheckIcon = (props) => (
@@ -54,7 +55,8 @@ export default function AdminComplaintSolutions() {
         status: item.durum || "Inceleniyor",
         type: item.sikayetTuruId || "Bulunamadı",
         sikayetTuruAdi: item.sikayetTuruAdi,
-        fotoUrl: item.fotoUrl || ""
+        fotoUrl: item.fotoUrl || "",
+        dogrulanmaSayisi: item.dogrulanmaSayisi || 0
       }));
       setComplaints(mapped);
       updateMapMarkers(mapped.filter(c => selectedType === "Tümü" || c.sikayetTuruAdi === selectedType));
@@ -78,7 +80,8 @@ export default function AdminComplaintSolutions() {
       view: new View({
         center: fromLonLat([35.2433, 38.9637]),
         zoom: 6
-      })
+      }),
+      controls: defaultControls({ zoom: false, attribution: false })
     });
 
     setMap(initialMap);
@@ -111,7 +114,7 @@ export default function AdminComplaintSolutions() {
         let iconColor;
         if (c.status === "Cozuldu") iconColor = "green";
         else if (c.status === "Reddedildi") iconColor = "red";
-        else iconColor = "orange";
+        else iconColor = "blue";
         
         feature.setStyle(
           new Style({
@@ -261,12 +264,12 @@ export default function AdminComplaintSolutions() {
           <button
             onClick={() => setStatus(row.id, "Inceleniyor")}
             className={`p-1 rounded-full border ${
-              row.status === "Inceleniyor" ? "bg-yellow-100 border-yellow-400" : "border-gray-200"
+              row.status === "Inceleniyor" ? "bg-blue-100 border-blue-400" : "border-gray-200"
             }`}
             title="İnceleniyor"
           >
             <ClockIcon className={`h-5 w-5 ${
-              row.status === "Inceleniyor" ? "text-yellow-600" : "text-gray-400"
+              row.status === "Inceleniyor" ? "text-blue-600" : "text-gray-400"
             }`} />
           </button>
           <button
@@ -300,7 +303,7 @@ export default function AdminComplaintSolutions() {
         let colorClass = "";
         if (row.status === "Cozuldu") colorClass = "text-green-600";
         else if (row.status === "Reddedildi") colorClass = "text-red-500";
-        else if (row.status === "Inceleniyor") colorClass = "text-yellow-600";
+        else if (row.status === "Inceleniyor") colorClass = "text-blue-600";
         
         return (
           <span className={`font-semibold ${colorClass}`}>
@@ -347,32 +350,69 @@ export default function AdminComplaintSolutions() {
       <div className="bg-white rounded-lg shadow-lg h-[400px] relative">
         <div ref={mapRef} className="w-full h-full rounded-lg"></div>
         {popupContent && (
-          <div className="absolute bg-white p-4 rounded-lg shadow-lg border w-64 top-4 left-4 z-10">
-            <h3 className="font-bold text-lg">{popupContent.title}</h3>
-            <p className="text-sm text-gray-600">{popupContent.desc}</p>
-            <p className="mt-2 text-sm font-semibold">
-              Durum: <span className={`
-                ${popupContent.status === "Cozuldu" ? "text-green-600" : 
-                  popupContent.status === "Reddedildi" ? "text-red-500" : 
-                  "text-yellow-600"}`}>
-                {popupContent.status}
-              </span>
-            </p>
-            {popupContent.fotoUrl && (
-              <img 
-                src={popupContent.fotoUrl} 
-                alt="Şikayet fotoğrafı" 
-                className="mt-2 w-full h-auto rounded"
-              />
-            )}
-            <button 
-              onClick={() => setPopupContent(null)} 
-              className="mt-3 w-full bg-gray-300 py-1 rounded hover:bg-gray-400"
-            >
-              Kapat
-            </button>
-          </div>
-        )}
+  <div
+    className="absolute z-50 bg-white rounded-lg shadow-lg p-4"
+    style={{
+      top: "12px",
+      left: "12px",
+      minWidth: "250px",
+      maxWidth: "300px",
+      maxHeight: "400px",
+      overflowY: "auto",
+      opacity: 1,
+      transform: "translateY(0)",
+      transition: "opacity 0.3s ease, transform 0.3s ease",
+    }}
+  >
+    {/* Kapat Butonu */}
+    <button
+      onClick={() => setPopupContent(null)}
+      className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow hover:bg-red-600"
+      style={{ lineHeight: 1 }}
+    >
+      ×
+    </button>
+
+    {/* Fotoğraf */}
+    <img
+      src={popupContent.fotoUrl || "https://via.placeholder.com/240x130?text=Görsel+Yok"}
+      alt={popupContent.title}
+      className="w-full h-32 object-cover rounded mb-2"
+    />
+
+    {/* Başlık ve Açıklama */}
+    <h3 className="font-semibold text-base mb-1">{popupContent.title}</h3>
+    <p className="text-sm text-gray-600 mb-1">{popupContent.desc}</p>
+
+    {/* Tür ve Durum */}
+    <p className="text-xs text-gray-500 mb-1">
+      Tür: {popupContent.sikayetTuruAdi || "Bilinmiyor"}
+    </p>
+    <p className="text-sm font-semibold mb-2">
+      Durum:{" "}
+      <span
+        className={
+          popupContent.status === "Cozuldu"
+            ? "text-green-600"
+            : popupContent.status === "Reddedildi"
+            ? "text-red-500"
+            : "text-blue-600"
+        }
+      >
+        {popupContent.status}
+      </span>
+    </p>
+
+    {/* Doğrulanma Sayısı */}
+    <p
+      className="text-sm font-medium text-green-600 text-center bg-green-50 py-1 px-3 rounded-full border border-green-200 shadow-inner"
+      style={{ display: "inline-block", marginTop: "6px" }}
+    >
+      Doğrulanma: {popupContent.dogrulanmaSayisi || 0}
+    </p>
+  </div>
+)}
+
       </div>
 
       {/* DataTable */}
