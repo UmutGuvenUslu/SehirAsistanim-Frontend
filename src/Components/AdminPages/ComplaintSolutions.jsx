@@ -16,6 +16,12 @@ import axios from "axios";
 import { defaults as defaultControls } from "ol/control";
 
 // SVG Icons
+const FormIcon = (props) => (
+  <svg {...props} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16 2H8a2 2 0 00-2 2v16a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2zM10 2v16h4V2H10z" />
+  </svg>
+);
+
 const CheckIcon = (props) => (
   <svg {...props} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -77,8 +83,17 @@ export default function AdminComplaintSolutions() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [map, setMap] = useState(null);
   const [complaintTypes, setComplaintTypes] = useState([]);
+  const [ShowFormModal, setShowFormModal] = useState(false);
+  
 
-  // Fetch complaint types from API
+
+
+
+
+
+
+  
+
   const getComplaintTypes = async () => {
     try {
       const res = await axios.get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll");
@@ -88,7 +103,6 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Önem sırası hesaplama (duygu analizi 60% , doğrulanma sayısı 40%)
   const calculateCombinedScore = (complaint) => {
     const sentimentScore = complaint.duyguPuani || 0;
     const normalizedSentiment = (1 - (sentimentScore + 4) / 8) * 5 * 0.6;
@@ -100,7 +114,6 @@ export default function AdminComplaintSolutions() {
     return combinedScore;
   };
 
-  // Fetch complaints from API
   const getComplaints = async () => {
     try {
       const res = await axios.get("https://sehirasistanim-backend-production.up.railway.app/Sikayet/GetAll");
@@ -115,6 +128,7 @@ export default function AdminComplaintSolutions() {
         sikayetTuruAdi: item.sikayetTuruAdi,
         fotoUrl: item.fotoUrl || "",
         duyguPuani: item.duyguPuani || 0,
+        sikayetCozumlar:item.sikayetCozumlar,
         dogrulanmaSayisi: item.dogrulanmaSayisi || 0,
         combinedScore: calculateCombinedScore({
           duyguPuani: item.duyguPuani || 0,
@@ -129,7 +143,6 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Initialize map
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -154,11 +167,9 @@ export default function AdminComplaintSolutions() {
     };
   }, []);
 
-  // Update map markers when complaints or filter changes
   const updateMapMarkers = (complaintsToShow) => {
     if (!map) return;
 
-    // Remove existing vector layer
     map.getLayers().forEach(layer => {
       if (layer instanceof VectorLayer) {
         map.removeLayer(layer);
@@ -198,7 +209,6 @@ export default function AdminComplaintSolutions() {
 
     map.addLayer(vectorLayer);
 
-    // Add click handler
     map.on('click', (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature);
       if (feature) {
@@ -216,7 +226,6 @@ export default function AdminComplaintSolutions() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update map when filtered complaints change
   useEffect(() => {
     if (complaints.length > 0) {
       const filtered = selectedType === "Tümü"
@@ -226,13 +235,20 @@ export default function AdminComplaintSolutions() {
     }
   }, [selectedType, complaints]);
 
-  // Filter complaints by type
   const filteredComplaints = selectedType === "Tümü"
     ? complaints
     : complaints.filter((c) => c.sikayetTuruAdi === selectedType);
 
-  // Update complaint status
   const setStatus = async (id, newStatus) => {
+    const complaint = complaints.find(c => c.id === id);
+    const hasSolutions = complaint?.sikayetCozumlar?.length > 0;
+
+    // "Çözüldü" durumu sadece çözümler varsa yapılabilir
+    if (newStatus === "Cozuldu" && !hasSolutions) {
+      Swal.fire("Hata", "Çözüm önerisi bulunmadığı için 'Çözüldü' durumu seçilemez.", "error");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       await axios.put(
@@ -248,7 +264,6 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Delete complaint
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: "Silinsin mi?",
@@ -275,16 +290,25 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Edit complaint
-  const handleEdit = (complaint) => {
-    setEditingComplaint({
-      ...complaint,
-      type: complaintTypes.find(t => t.ad === complaint.sikayetTuruAdi)?.id || ""
-    });
-    setShowEditModal(true);
+  const openFormModal = (complaintId) => {
+    const complaint = complaints.find(c => c.id === complaintId);
+    setPopupContent(complaint);  // Modal için içeriği set ediyoruz
+    setShowFormModal(true);  // Şikayet çözüm formu modalını açıyoruz
   };
 
-  // Save edited complaint
+  const closeFormModal = () => {
+    setPopupContent(null);
+    setShowFormModal(false);  // Şikayet çözüm formu modalını kapatıyoruz
+  };
+
+const handleEdit = (complaint) => {
+   setEditingComplaint({
+     ...complaint,
+     type: complaintTypes.find(t => t.ad === complaint.sikayetTuruAdi)?.id || ""
+   });
+   setShowEditModal(true);  
+};
+
   const handleSave = async () => {
     if (!editingComplaint?.title || !editingComplaint?.desc) {
       Swal.fire("Eksik bilgi", "Başlık ve açıklama zorunludur.", "warning");
@@ -318,117 +342,111 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // DataTable columns
-  const columns = [
-    {
-      name: "Başlık",
-      selector: (row) => row.title,
-      sortable: true,
-      width: "150px"
-    },
-    {
-      name: "Açıklama",
-      selector: (row) => row.desc,
-      sortable: false,
-      cell: row => (
-        <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={row.desc}>
-          {row.desc}
+ const columns = [
+  {
+    name: "Başlık",
+    selector: (row) => row.title,
+    sortable: true,
+    width: "150px"
+  },
+  {
+    name: "Açıklama",
+    selector: (row) => row.desc,
+    sortable: false,
+    cell: row => (
+      <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={row.desc}>
+        {row.desc}
+      </div>
+    ),
+    width: "200px",
+    style: {
+      paddingRight: '8px'
+    }
+  },
+  {
+    name: "Tür",
+    selector: (row) => row.sikayetTuruAdi,
+    sortable: true,
+    width: "250px"
+  },
+  {
+    name: "Önem Puanı",
+    cell: (row) => (
+      <div className="flex flex-col">
+        <StarRating rating={row.combinedScore} />
+        <div className="text-xs text-gray-500 mt-1">
+          {row.duyguPuani > 0 ? (
+            <span className="text-green-600">Olumlu ({row.duyguPuani})</span>
+          ) : row.duyguPuani < 0 ? (
+            <span className="text-red-500">Olumsuz ({row.duyguPuani})</span>
+          ) : (
+            <span className="text-gray-500">Nötr</span>
+          )}
+          <span className="ml-2">• {row.dogrulanmaSayisi} doğrulama</span>
         </div>
-      ),
-      width: "200px",
-      style: {
-        paddingRight: '8px'
-      }
+      </div>
+    ),
+    sortable: false,
+  },
+  {
+    name: "Durum",
+    cell: (row) => (
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => setStatus(row.id, "Inceleniyor")}
+          className={`p-1 rounded-full border cursor-pointer ${row.status === "Inceleniyor" ? "bg-blue-100 border-blue-400" : "border-gray-200"}`}
+          title="İnceleniyor"
+        >
+          <ClockIcon className={`h-5 w-5 ${row.status === "Inceleniyor" ? "text-blue-600" : "text-gray-400"}`} />
+        </button>
+        <button
+          onClick={() => setStatus(row.id, "Cozuldu")}
+          disabled={row.sikayetCozumlar?.length === 0} // Eğer çözümler yoksa "Çözüldü" durumu seçilemez
+          className={`p-1 rounded-full border cursor-pointer ${row.status === "Cozuldu" ? "bg-green-100 border-green-400" : "border-gray-200"}`}
+          title="Çözüldü"
+        >
+          <CheckIcon className={`h-5 w-5 ${row.status === "Cozuldu" ? "text-green-600" : "text-gray-400"}`} />
+        </button>
+        <button
+          onClick={() => setStatus(row.id, "Reddedildi")}
+          className={`p-1 rounded-full border cursor-pointer ${row.status === "Reddedildi" ? "bg-red-100 border-red-400" : "border-gray-200"}`}
+          title="Reddedildi"
+        >
+          <XMarkIcon className={`h-5 w-5 ${row.status === "Reddedildi" ? "text-red-500" : "text-gray-400"}`} />
+        </button>
+      </div>
+    ),
+  },
+  {
+    name: "Durum Text",
+    cell: (row) => {
+      const colorClass = row.status === "Cozuldu" ? "text-green-600" : row.status === "Reddedildi" ? "text-red-600" : "text-blue-600";
+      return (
+        <span className={`font-semibold ${colorClass}`}>
+          {row.status}
+        </span>
+      );
     },
-    {
-      name: "Tür",
-      selector: (row) => row.sikayetTuruAdi,
-      sortable: true,
-      width: "250px"
-    },
-    {
-      name: "Önem Puanı",
-      cell: (row) => (
-        <div className="flex flex-col">
-          <StarRating rating={row.combinedScore} />
-          <div className="text-xs text-gray-500 mt-1">
-            {row.duyguPuani > 0 ? (
-              <span className="text-green-600">Olumlu ({row.duyguPuani})</span>
-            ) : row.duyguPuani < 0 ? (
-              <span className="text-red-500">Olumsuz ({row.duyguPuani})</span>
-            ) : (
-              <span className="text-gray-500">Nötr</span>
-            )}
-            <span className="ml-2">• {row.dogrulanmaSayisi} doğrulama</span>
-          </div>
-        </div>
-      ),
-      sortable: false,
-    },
-    {
-      name: "Durum",
-      cell: (row) => (
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => setStatus(row.id, "Inceleniyor")}
-            className={`p-1 rounded-full border ${row.status === "Inceleniyor" ? "bg-blue-100 border-blue-400" : "border-gray-200"
-              }`}
-            title="İnceleniyor"
-          >
-            <ClockIcon className={`h-5 w-5 ${row.status === "Inceleniyor" ? "text-blue-600" : "text-gray-400"
-              }`} />
-          </button>
-          <button
-            onClick={() => setStatus(row.id, "Cozuldu")}
-            className={`p-1 rounded-full border ${row.status === "Cozuldu" ? "bg-green-100 border-green-400" : "border-gray-200"
-              }`}
-            title="Çözüldü"
-          >
-            <CheckIcon className={`h-5 w-5 ${row.status === "Cozuldu" ? "text-green-600" : "text-gray-400"
-              }`} />
-          </button>
-          <button
-            onClick={() => setStatus(row.id, "Reddedildi")}
-            className={`p-1 rounded-full border ${row.status === "Reddedildi" ? "bg-red-100 border-red-400" : "border-gray-200"
-              }`}
-            title="Reddedildi"
-          >
-            <XMarkIcon className={`h-5 w-5 ${row.status === "Reddedildi" ? "text-red-500" : "text-gray-400"
-              }`} />
-          </button>
-        </div>
-      ),
-    },
-    {
-      name: "Durum Metni",
-      cell: (row) => {
-        let colorClass = "";
-        if (row.status === "Cozuldu") colorClass = "text-green-600";
-        else if (row.status === "Reddedildi") colorClass = "text-red-500";
-        else if (row.status === "Inceleniyor") colorClass = "text-blue-600";
+  },
+  {
+    name: "İşlemler",
+    cell: (row) => (
+      <div className="flex gap-3">
+        <button onClick={() => handleEdit(row)} title="Düzenle">
+          <PencilIcon className="h-5 w-5 text-blue-500 hover:scale-110" />
+        </button>
+        <button onClick={() => handleDelete(row.id)} title="Sil">
+          <TrashIcon className="h-5 w-5 text-red-500 hover:scale-110" />
+        </button>
+      </div>
+    ),
+  },
+];
 
-        return (
-          <span className={`font-semibold ${colorClass}`}>
-            {row.status}
-          </span>
-        );
-      },
-    },
-    {
-      name: "İşlemler",
-      cell: (row) => (
-        <div className="flex gap-3">
-          <button onClick={() => handleEdit(row)} title="Düzenle">
-            <PencilIcon className="h-5 w-5 text-blue-500 hover:scale-110" />
-          </button>
-          <button onClick={() => handleDelete(row.id)} title="Sil">
-            <TrashIcon className="h-5 w-5 text-red-500 hover:scale-110" />
-          </button>
-        </div>
-      ),
-    },
-  ];
 
+
+
+  
   return (
     <div className="space-y-6">
       {/* Filter Section */}
@@ -449,78 +467,40 @@ export default function AdminComplaintSolutions() {
         </div>
       </div>
 
-      {/* Map */}
+      {/* Harita */}
       <div className="bg-white rounded-lg shadow-lg h-[400px] relative">
         <div ref={mapRef} className="w-full h-full rounded-lg"></div>
-        {popupContent && (
-          <div
-            className="absolute z-50 bg-white rounded-lg shadow-lg p-4"
-            style={{
-              top: "12px",
-              left: "12px",
-              minWidth: "250px",
-              maxWidth: "300px",
-              maxHeight: "400px",
-              overflowY: "auto",
-              opacity: 1,
-              transform: "translateY(0)",
-              transition: "opacity 0.3s ease, transform 0.3s ease",
-            }}
-          >
-            {/* Kapat Butonu */}
-            <button
-              onClick={() => setPopupContent(null)}
-              className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow hover:bg-red-600"
-              style={{ lineHeight: 1 }}
-            >
-              ×
-            </button>
+      </div>
 
-            {/* Fotoğraf */}
-            <img
-              src={popupContent.fotoUrl || "https://via.placeholder.com/240x130?text=Görsel+Yok"}
-              alt={popupContent.title}
-              className="w-full h-32 object-cover rounded mb-2"
-            />
-
-            {/* Başlık ve Açıklama */}
-            <h3 className="font-semibold text-base mb-1">{popupContent.title}</h3>
-            <p className="text-sm text-gray-600 mb-1">{popupContent.desc}</p>
-
-            {/* Tür ve Durum */}
-            <p className="text-xs text-gray-500 mb-1">
-              Tür: {popupContent.sikayetTuruAdi || "Bilinmiyor"}
-            </p>
-            <p className="text-sm font-semibold mb-2">
-              Durum:{" "}
-              <span
-                className={
-                  popupContent.status === "Cozuldu"
-                    ? "text-green-600"
-                    : popupContent.status === "Reddedildi"
-                      ? "text-red-500"
-                      : "text-blue-600"
-                }
+      {/* Form Modal */}
+      {ShowFormModal && popupContent && popupContent.sikayetCozumlar?.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Şikayet Çözüm Formu</h3>
+            {/* Form İçeriği */}
+            {popupContent?.sikayetCozumlar?.length > 0 ? (
+              popupContent.sikayetCozumlar.map((cozum, index) => (
+                <div key={index}>
+                  <p><strong>Çözüm Açıklaması:</strong> {cozum.cozumAciklamasi}</p>
+                  <p><strong>Fotoğraf:</strong> <a href={cozum.cozumFotoUrl} target="_blank" rel="noopener noreferrer">Çözüm Fotoğrafı</a></p>
+                  <p><strong>Çözüm Tarihi:</strong> {new Date(cozum.cozumeTarihi).toLocaleString()}</p>
+                  <p><strong>Çözümü Gönderen Kullanıcı:</strong> {cozum.cozenKullanici?.isim} {cozum.cozenKullanici?.soyisim}</p>
+                </div>
+              ))
+            ) : (
+              <p>Henüz bir çözüm önerisi bulunmamaktadır.</p>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={closeFormModal}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
               >
-                {popupContent.status}
-              </span>
-            </p>
-
-            {/* Puan ve Doğrulanma */}
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">
-                Puan: <StarRating rating={popupContent.combinedScore} />
-              </div>
-              <p
-                className="text-sm font-medium text-green-600 text-center bg-green-50 py-1 px-3 rounded-full border border-green-200 shadow-inner"
-                style={{ display: "inline-block" }}
-              >
-                Doğrulanma: {popupContent.dogrulanmaSayisi || 0}
-              </p>
+                Kapat
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* DataTable */}
       <div className="bg-white p-4 rounded-lg shadow-lg">
@@ -532,6 +512,10 @@ export default function AdminComplaintSolutions() {
           highlightOnHover
           striped
           noDataComponent={<div className="p-4 text-center text-gray-500">Kayıt bulunamadı</div>}
+          paginationComponentOptions={{
+            rowsPerPageText: 'Sayfa başına kayıt',
+            rangeSeparatorText: ' / ',
+          }}
         />
       </div>
 
@@ -554,7 +538,6 @@ export default function AdminComplaintSolutions() {
               className="border p-2 rounded-lg w-full mb-3"
               rows={4}
             />
-
             {/* Complaint Type Selection */}
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Şikayet Türü</label>
@@ -569,7 +552,106 @@ export default function AdminComplaintSolutions() {
                 ))}
               </select>
             </div>
-
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+              >
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Şikayet Düzenle</h3>
+            <input
+              type="text"
+              value={editingComplaint?.title || ""}
+              onChange={(e) => setEditingComplaint({ ...editingComplaint, title: e.target.value })}
+              placeholder="Başlık"
+              className="border p-2 rounded-lg w-full mb-3"
+            />
+            <textarea
+              value={editingComplaint?.desc || ""}
+              onChange={(e) => setEditingComplaint({ ...editingComplaint, desc: e.target.value })}
+              placeholder="Açıklama"
+              className="border p-2 rounded-lg w-full mb-3"
+              rows={4}
+            />
+            {/* Complaint Type Selection */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Şikayet Türü</label>
+              <select
+                value={editingComplaint?.type || ""}
+                onChange={(e) => setEditingComplaint({ ...editingComplaint, type: e.target.value })}
+                className="border p-2 rounded-lg w-full"
+              >
+                <option value="">Tür Seçiniz</option>
+                {complaintTypes.map((type) => (
+                  <option key={type.id} value={type.id}>{type.ad}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+              >
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+       {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Şikayet Düzenle</h3>
+            <input
+              type="text"
+              value={editingComplaint?.title || ""}
+              onChange={(e) => setEditingComplaint({ ...editingComplaint, title: e.target.value })}
+              placeholder="Başlık"
+              className="border p-2 rounded-lg w-full mb-3"
+            />
+            <textarea
+              value={editingComplaint?.desc || ""}
+              onChange={(e) => setEditingComplaint({ ...editingComplaint, desc: e.target.value })}
+              placeholder="Açıklama"
+              className="border p-2 rounded-lg w-full mb-3"
+              rows={4}
+            />
+            {/* Complaint Type Selection */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Şikayet Türü</label>
+              <select
+                value={editingComplaint?.type || ""}
+                onChange={(e) => setEditingComplaint({ ...editingComplaint, type: e.target.value })}
+                className="border p-2 rounded-lg w-full"
+              >
+                <option value="">Tür Seçiniz</option>
+                {complaintTypes.map((type) => (
+                  <option key={type.id} value={type.id}>{type.ad}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setShowEditModal(false)}
