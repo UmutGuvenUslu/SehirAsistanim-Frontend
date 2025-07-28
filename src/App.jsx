@@ -1,60 +1,34 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getDistance } from "geolib";
+import ProtectedRoute from "./Components/ProtectedRoute"; // ProtectedRoute'ı import et
+import AuthLayout from "./Layouts/AuthLayout"; // AuthLayout importu
+import MainLayout from "./Layouts/MainLayout"; // MainLayout importu
 
 // Component imports
-import UserMap from "./Components/UserMap";
-import Login from "./Components/Login";
-import Register from "./Components/Register";
 import AdminPanel from "./Components/AdminPages/AdminPanel";
 import NotFoundPage from "./Components/NotFoundPage";
-import Sikayetlerim from "./Components/Sikayetlerim";
 import Dashboard from "./Components/AdminPages/Dashboard";
-import UserManagement from "./Components/AdminPages/UserManagement";
 import AdminProfile from "./Components/AdminPages/AdminProfile";
+import Navbar from "./Components/Navbar";
+import Sikayetlerim from "./Components/Sikayetlerim";
+import Hakkimizda from "./Components/Hakkimizda";
+import Profilim from "./Components/Profilim";
+import Login from "./Components/Login";
+import Register from "./Components/Register";
+import BirimAdminPanel from "./Components/BirimAdminPages/BirimAdminPanel";
+import BirimAdminDashboard from "./Components/BirimAdminPages/BirimAdminDashboard";
+import BirimAdminProfil from "./Components/BirimAdminPages/BirimAdminProfil";
+import BirimAdminComplaintSolution from "./Components/BirimAdminPages/BirimAdminComplaintSolution";
+import UserManagement from "./Components/AdminPages/UserManagement";
 import DepartmentManagement from "./Components/AdminPages/DepartmentManagement";
 import ComplaintSolutions from "./Components/AdminPages/ComplaintSolutions";
 import ComplaintTypes from "./Components/AdminPages/ComplaintTypes";
-import Hakkimizda from "./Components/Hakkimizda";
-import Profilim from "./Components/Profilim";
-import Navbar from "./Components/Navbar";
-
-// Layout imports
-import AuthLayout from "./Layouts/AuthLayout";
-import MainLayout from "./Layouts/MainLayout";
-import { AuthContext } from "./Context/AuthContext";
 import RolYonetimi from "./Components/AdminPages/RolYonetimi";
 
-// Admin yetkilendirme kontrolü
-function ProtectedRoute({ children, requiredRole }) {
-  const token = localStorage.getItem("token");
-  if (!token) return <Navigate to="/404" />;
-
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    const decoded = JSON.parse(jsonPayload);
-
-    const userRole =
-      decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
-      decoded["role"] ||
-      "";
-
-    if (userRole !== requiredRole) return <Navigate to="/404" />;
-
-    return children;
-  } catch (err) {
-    return <Navigate to="/404" />;
-  }
-}
+// Auth context
+import { AuthContext } from "./Context/AuthContext";
 
 function App() {
   const navigate = useNavigate();
@@ -62,7 +36,7 @@ function App() {
   const { logout } = useContext(AuthContext);
   const [appUserLocation, setAppUserLocation] = useState(null);
   const [selectedCoord, setSelectedCoord] = useState(null);
-  const LIMIT_RADIUS = 25000; // 25 km in meters
+  const LIMIT_RADIUS = 25000; // 25 km
 
   // Kullanıcı konumunu al
   useEffect(() => {
@@ -104,17 +78,16 @@ function App() {
   }, [logout]);
 
   const handleSearchResult = (coords) => {
-    // Seçilen konumun kullanıcı konumuna uzaklığını kontrol et
     if (appUserLocation) {
       const distance = getDistance(
         { latitude: appUserLocation[1], longitude: appUserLocation[0] },
         { latitude: coords[1], longitude: coords[0] }
       );
-      
+
       if (distance <= LIMIT_RADIUS) {
         setSelectedCoord(coords);
         if (location.pathname !== "/") {
-          navigate("/"); // Anasayfaya yönlendir
+          navigate("/");
         }
       } else {
         toast.warning("Seçtiğiniz konum 25 km sınırının dışında kaldı.");
@@ -122,7 +95,7 @@ function App() {
     } else {
       setSelectedCoord(coords);
       if (location.pathname !== "/") {
-        navigate("/"); // Anasayfaya yönlendir
+        navigate("/");
       }
     }
   };
@@ -130,37 +103,35 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Login ve Register sayfalarında Navbar yok */}
+        {/* Login ve Register */}
         <Route element={<AuthLayout />}>
           <Route path="/girisyap" element={<Login />} />
           <Route path="/kayitol" element={<Register />} />
         </Route>
 
-        {/* Kullanıcı tarafı sayfaları (Navbar var) */}
+        {/* Kullanıcı tarafı */}
         <Route
           element={
             <>
-              <Navbar 
-                onSearchResult={handleSearchResult} 
-                userLocation={appUserLocation} 
+              <Navbar
+                onSearchResult={handleSearchResult}
+                userLocation={appUserLocation}
               />
-              <MainLayout   
+              <MainLayout
                 selectedCoordinate={selectedCoord}
                 onCoordinateSelect={setSelectedCoord}
-                userLocation={appUserLocation} />
+                userLocation={appUserLocation}
+              />
             </>
           }
         >
-          <Route 
-            path="/" 
-         
-          />
+          <Route path="/" />
           <Route path="/sikayetlerim" element={<Sikayetlerim />} />
           <Route path="/hakkimizda" element={<Hakkimizda />} />
           <Route path="/profil" element={<Profilim />} />
         </Route>
 
-        {/* Admin panel (Navbar yok) */}
+        {/* Admin Panel */}
         <Route
           path="/adminpanel"
           element={
@@ -175,7 +146,22 @@ function App() {
           <Route path="birimyonetimi" element={<DepartmentManagement />} />
           <Route path="sikayetcozumleri" element={<ComplaintSolutions />} />
           <Route path="sikayetturuyonetimi" element={<ComplaintTypes />} />
-          <Route path="rollistesi" element={<RolYonetimi />} />
+          <Route path="rollistesi" element={<RolYonetimi />} />
+        </Route>
+
+        {/* Birim Admin Panel */}
+        <Route
+          path="/birimadminpanel"
+          element={
+            <ProtectedRoute requiredRole="BirimAdmin">
+              <BirimAdminPanel />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<BirimAdminDashboard />} />
+          <Route path="birimadminprofil" element={<BirimAdminProfil />} />
+          <Route path="birimadminsikayetcozumleri" element={<BirimAdminComplaintSolution />} />
+          
         </Route>
 
         <Route path="/404" element={<NotFoundPage />} />

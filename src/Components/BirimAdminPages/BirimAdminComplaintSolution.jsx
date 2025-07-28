@@ -33,77 +33,70 @@ const ClockIcon = (props) => (
   </svg>
 );
 
-// Star Rating 
-const StarRating = ({ rating }) => {
-  const maxStars = 5;
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  const emptyStars = maxStars - fullStars - (hasHalfStar ? 1 : 0);
+// JWT token çözümleyici
+const getRolesFromToken = (token) => {
+  try {
+    if (!token) return [];
+    const parts = token.split(".");
+    if (parts.length !== 3) return [];
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const data = JSON.parse(jsonPayload);
 
-  return (
-    <div className="flex items-center">
-      {[...Array(fullStars)].map((_, i) => (
-        <svg key={`full-${i}`} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-      {hasHalfStar && (
-        <svg key="half" className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-          <defs>
-            <linearGradient id="half-star" x1="0" x2="100%" y1="0" y2="0">
-              <stop offset="50%" stopColor="currentColor" />
-              <stop offset="50%" stopColor="#D1D5DB" />
-            </linearGradient>
-          </defs>
-          <path fill="url(#half-star)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      )}
-      {[...Array(emptyStars)].map((_, i) => (
-        <svg key={`empty-${i}`} className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-      <span className="ml-1 text-sm text-gray-500">({rating.toFixed(1)})</span>
-    </div>
-  );
+    let roles =
+      data.role ||
+      data["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+      [];
+    if (!Array.isArray(roles)) roles = [roles];
+    return roles;
+  } catch (error) {
+    console.error("Token çözümleme hatası:", error);
+    return [];
+  }
 };
 
-export default function AdminComplaintSolutions() {
+// BirimAdmin dışındaki ilk rolün 4 harfini al
+const getShortDepartmentRole = (roles) => {
+  const departmentRole = roles.find((r) => r !== "BirimAdmin");
+  if (!departmentRole) return "";
+  return departmentRole.substring(0, 4);
+};
+
+export default function BirimAdminComplaintSolutions() {
   const mapRef = useRef(null);
   const [popupContent, setPopupContent] = useState(null);
   const [complaints, setComplaints] = useState([]);
-  const [selectedType, setSelectedType] = useState("Tümü");
   const [editingComplaint, setEditingComplaint] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [rolAdi, setRolAdi] = useState("");
   const [map, setMap] = useState(null);
-  const [complaintTypes, setComplaintTypes] = useState([]);
 
-  // Fetch complaint types from API
-  const getComplaintTypes = async () => {
+  // Şikayetleri API'den çek
+  const getComplaints = async (rolAdiParam) => {
     try {
-      const res = await axios.get("https://sehirasistanim-backend-production.up.railway.app/SikayetTuru/GetAll");
-      setComplaintTypes(res.data);
-    } catch (err) {
-      console.error("Şikayet türleri çekilemedi:", err);
-    }
-  };
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("Token bulunamadı");
+        return;
+      }
+      if (!rolAdiParam) {
+        console.error("Rol adı yok");
+        return;
+      }
 
-  // Önem sırası hesaplama (duygu analizi 60% , doğrulanma sayısı 40%)
-  const calculateCombinedScore = (complaint) => {
-    const sentimentScore = complaint.duyguPuani || 0;
-    const normalizedSentiment = (1 - (sentimentScore + 4) / 8) * 5 * 0.6;
+      const res = await axios.get(
+        `https://sehirasistanim-backend-production.up.railway.app/SikayetCozum/GetSikayetlerForBirim?roladi=${encodeURIComponent(
+          rolAdiParam
+        )}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    const verificationCount = complaint.dogrulanmaSayisi || 0;
-    const normalizedVerification = (Math.min(verificationCount, 10) / 10) * 5 * 0.4;
-
-    const combinedScore = Math.min(Math.max(normalizedSentiment + normalizedVerification, 0), 5);
-    return combinedScore;
-  };
-
-  // Fetch complaints from API
-  const getComplaints = async () => {
-    try {
-      const res = await axios.get("https://sehirasistanim-backend-production.up.railway.app/Sikayet/GetAll");
       const mapped = res.data.map((item) => ({
         id: item.id,
         title: item.baslik || "Başlık Yok",
@@ -114,124 +107,106 @@ export default function AdminComplaintSolutions() {
         type: item.sikayetTuruId || "Bulunamadı",
         sikayetTuruAdi: item.sikayetTuruAdi,
         fotoUrl: item.fotoUrl || "",
-        duyguPuani: item.duyguPuani || 0,
         dogrulanmaSayisi: item.dogrulanmaSayisi || 0,
-        combinedScore: calculateCombinedScore({
-          duyguPuani: item.duyguPuani || 0,
-          dogrulanmaSayisi: item.dogrulanmaSayisi || 0
-        })
       }));
+
       setComplaints(mapped);
-      updateMapMarkers(mapped.filter(c => selectedType === "Tümü" || c.sikayetTuruAdi === selectedType));
+      updateMapMarkers(mapped);
     } catch (err) {
       console.error("Şikayetler çekilemedi:", err);
       Swal.fire("Hata", "Şikayetler yüklenirken bir hata oluştu.", "error");
     }
   };
 
-  // Initialize map
+  // Haritayı başlat
   useEffect(() => {
     if (!mapRef.current) return;
 
     const initialMap = new Map({
       target: mapRef.current,
-      layers: [
-        new TileLayer({
-          source: new OSM()
-        })
-      ],
+      layers: [new TileLayer({ source: new OSM() })],
       view: new View({
         center: fromLonLat([35.2433, 38.9637]),
-        zoom: 6
+        zoom: 6,
       }),
-      controls: defaultControls({ zoom: false, attribution: false })
+      controls: defaultControls({ zoom: false, attribution: false }),
     });
 
     setMap(initialMap);
-
     return () => {
       initialMap.setTarget(undefined);
     };
   }, []);
 
-  // Update map markers when complaints or filter changes
+  // Harita markerlarını güncelle
   const updateMapMarkers = (complaintsToShow) => {
     if (!map) return;
-
-    // Remove existing vector layer
-    map.getLayers().forEach(layer => {
+    map.getLayers().forEach((layer) => {
       if (layer instanceof VectorLayer) {
         map.removeLayer(layer);
       }
     });
 
     const vectorSource = new VectorSource();
-
     complaintsToShow.forEach((c) => {
       if (c.lat && c.lon) {
         const feature = new Feature({
           geometry: new Point(fromLonLat([parseFloat(c.lon), parseFloat(c.lat)])),
-          data: c
+          data: c,
         });
 
-        let iconColor;
+        let iconColor = "blue";
         if (c.status === "Cozuldu") iconColor = "green";
         else if (c.status === "Reddedildi") iconColor = "red";
-        else iconColor = "blue";
 
         feature.setStyle(
           new Style({
             image: new Icon({
               src: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${iconColor}.png`,
               scale: 0.5,
-              anchor: [0.5, 1]
-            })
+              anchor: [0.5, 1],
+            }),
           })
         );
         vectorSource.addFeature(feature);
       }
     });
 
-    const vectorLayer = new VectorLayer({
-      source: vectorSource
-    });
-
+    const vectorLayer = new VectorLayer({ source: vectorSource });
     map.addLayer(vectorLayer);
 
-    // Add click handler
-    map.on('click', (evt) => {
+    map.on("click", (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature);
       if (feature) {
-        setPopupContent(feature.get('data'));
+        setPopupContent(feature.get("data"));
       } else {
         setPopupContent(null);
       }
     });
   };
 
+  // İlk yüklemede token'dan rolü bul ve şikayetleri çek
   useEffect(() => {
-    getComplaints();
-    getComplaintTypes();
-    const interval = setInterval(getComplaints, 30000);
-    return () => clearInterval(interval);
+    const token = localStorage.getItem("token");
+    const roles = getRolesFromToken(token);
+    const shortRole = getShortDepartmentRole(roles); // BirimAdmin dışı rolün 4 harfi
+    setRolAdi(shortRole);
+
+    if (shortRole) {
+      getComplaints(shortRole);
+      const interval = setInterval(() => getComplaints(shortRole), 30000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
-  // Update map when filtered complaints change
+  // Şikayetler değiştiğinde haritayı güncelle
   useEffect(() => {
     if (complaints.length > 0) {
-      const filtered = selectedType === "Tümü"
-        ? complaints
-        : complaints.filter(c => c.sikayetTuruAdi === selectedType);
-      updateMapMarkers(filtered);
+      updateMapMarkers(complaints);
     }
-  }, [selectedType, complaints]);
+  }, [complaints]);
 
-  // Filter complaints by type
-  const filteredComplaints = selectedType === "Tümü"
-    ? complaints
-    : complaints.filter((c) => c.sikayetTuruAdi === selectedType);
-
-  // Update complaint status
+  // Durum güncelleme
   const setStatus = async (id, newStatus) => {
     try {
       const token = localStorage.getItem("token");
@@ -240,7 +215,7 @@ export default function AdminComplaintSolutions() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      await getComplaints();
+      await getComplaints(rolAdi);
       Swal.fire("Başarılı", "Durum güncellendi.", "success");
     } catch (err) {
       console.error("Durum güncellenemedi:", err);
@@ -248,7 +223,7 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Delete complaint
+  // Silme
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: "Silinsin mi?",
@@ -266,7 +241,7 @@ export default function AdminComplaintSolutions() {
           `https://sehirasistanim-backend-production.up.railway.app/Sikayet/Delete/${id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        await getComplaints();
+        await getComplaints(rolAdi);
         Swal.fire("Silindi!", "Şikayet başarıyla silindi.", "success");
       } catch (err) {
         console.error("Silme hatası:", err);
@@ -275,22 +250,17 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // Edit complaint
+  // Düzenleme ve kaydetme
   const handleEdit = (complaint) => {
-    setEditingComplaint({
-      ...complaint,
-      type: complaintTypes.find(t => t.ad === complaint.sikayetTuruAdi)?.id || ""
-    });
+    setEditingComplaint({ ...complaint });
     setShowEditModal(true);
   };
 
-  // Save edited complaint
   const handleSave = async () => {
     if (!editingComplaint?.title || !editingComplaint?.desc) {
       Swal.fire("Eksik bilgi", "Başlık ve açıklama zorunludur.", "warning");
       return;
     }
-
     try {
       const token = localStorage.getItem("token");
       const payload = {
@@ -302,14 +272,12 @@ export default function AdminComplaintSolutions() {
         longitude: editingComplaint.lon || 0,
         fotoUrl: editingComplaint.fotoUrl || "",
       };
-
       await axios.put(
         "https://sehirasistanim-backend-production.up.railway.app/Sikayet/Update",
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      await getComplaints();
+      await getComplaints(rolAdi);
       Swal.fire("Güncellendi", "Şikayet başarıyla güncellendi.", "success");
       setShowEditModal(false);
     } catch (err) {
@@ -318,83 +286,53 @@ export default function AdminComplaintSolutions() {
     }
   };
 
-  // DataTable columns
+  // DataTable kolonları
   const columns = [
-    {
-      name: "Başlık",
-      selector: (row) => row.title,
-      sortable: true,
-      width: "150px"
-    },
-    {
-      name: "Açıklama",
-      selector: (row) => row.desc,
-      sortable: false,
-      cell: row => (
-        <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={row.desc}>
-          {row.desc}
-        </div>
-      ),
-      width: "200px",
-      style: {
-        paddingRight: '8px'
-      }
-    },
-    {
-      name: "Tür",
-      selector: (row) => row.sikayetTuruAdi,
-      sortable: true,
-      width: "250px"
-    },
-    {
-      name: "Önem Puanı",
-      cell: (row) => (
-        <div className="flex flex-col">
-          <StarRating rating={row.combinedScore} />
-          <div className="text-xs text-gray-500 mt-1">
-            {row.duyguPuani > 0 ? (
-              <span className="text-green-600">Olumlu ({row.duyguPuani})</span>
-            ) : row.duyguPuani < 0 ? (
-              <span className="text-red-500">Olumsuz ({row.duyguPuani})</span>
-            ) : (
-              <span className="text-gray-500">Nötr</span>
-            )}
-            <span className="ml-2">• {row.dogrulanmaSayisi} doğrulama</span>
-          </div>
-        </div>
-      ),
-      sortable: false,
-    },
+    { name: "Başlık", selector: (row) => row.title, sortable: true },
+    { name: "Açıklama", selector: (row) => row.desc, sortable: false, grow: 2 },
+    { name: "Tür", selector: (row) => row.sikayetTuruAdi, sortable: true },
     {
       name: "Durum",
       cell: (row) => (
         <div className="flex gap-1.5">
           <button
             onClick={() => setStatus(row.id, "Inceleniyor")}
-            className={`p-1 rounded-full border ${row.status === "Inceleniyor" ? "bg-blue-100 border-blue-400" : "border-gray-200"
-              }`}
+            className={`p-1 rounded-full border ${
+              row.status === "Inceleniyor" ? "bg-blue-100 border-blue-400" : "border-gray-200"
+            }`}
             title="İnceleniyor"
           >
-            <ClockIcon className={`h-5 w-5 ${row.status === "Inceleniyor" ? "text-blue-600" : "text-gray-400"
-              }`} />
+            <ClockIcon
+              className={`h-5 w-5 ${
+                row.status === "Inceleniyor" ? "text-blue-600" : "text-gray-400"
+              }`}
+            />
           </button>
           <button
             onClick={() => setStatus(row.id, "Cozuldu")}
-            className={`p-1 rounded-full border ${row.status === "Cozuldu" ? "bg-green-100 border-green-400" : "border-gray-200"
-              }`}
+            className={`p-1 rounded-full border ${
+              row.status === "Cozuldu" ? "bg-green-100 border-green-400" : "border-gray-200"
+            }`}
             title="Çözüldü"
           >
-            <CheckIcon className={`h-5 w-5 ${row.status === "Cozuldu" ? "text-green-600" : "text-gray-400"
-              }`} />
+            <CheckIcon
+              className={`h-5 w-5 ${
+                row.status === "Cozuldu" ? "text-green-600" : "text-gray-400"
+              }`}
+            />
           </button>
           <button
             onClick={() => setStatus(row.id, "Reddedildi")}
-            className={`p-1 rounded-full border ${row.status === "Reddedildi" ? "bg-red-100 border-red-400" : "border-gray-200"
-              }`}
+            className={`p-1 rounded-full border ${
+              row.status === "Reddedildi" ? "bg-red-100 border-red-400" : "border-gray-200"
+            }`}
             title="Reddedildi"
           >
-            <XMarkIcon className={`h-5 w-5 ${row.status === "Reddedildi" ? "text-red-500" : "text-gray-400"
-              }`} />
+            <XMarkIcon
+              className={`h-5 w-5 ${
+                row.status === "Reddedildi" ? "text-red-500" : "text-gray-400"
+              }`}
+            />
           </button>
         </div>
       ),
@@ -406,12 +344,7 @@ export default function AdminComplaintSolutions() {
         if (row.status === "Cozuldu") colorClass = "text-green-600";
         else if (row.status === "Reddedildi") colorClass = "text-red-500";
         else if (row.status === "Inceleniyor") colorClass = "text-blue-600";
-
-        return (
-          <span className={`font-semibold ${colorClass}`}>
-            {row.status}
-          </span>
-        );
+        return <span className={`font-semibold ${colorClass}`}>{row.status}</span>;
       },
     },
     {
@@ -431,25 +364,6 @@ export default function AdminComplaintSolutions() {
 
   return (
     <div className="space-y-6">
-      {/* Filter Section */}
-      <div className="bg-white rounded-lg shadow p-4 flex flex-col md:flex-row justify-between gap-4">
-        <h2 className="text-lg font-bold">Tüm Şikayetler</h2>
-        <div className="flex items-center gap-2">
-          <label className="font-medium text-gray-700">Şikayet Türü:</label>
-          <select
-            className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:border-orange-500 w-44"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            <option value="Tümü">Tümü</option>
-            {complaintTypes.map((type) => (
-              <option key={type.id} value={type.ad}>{type.ad}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Map */}
       <div className="bg-white rounded-lg shadow-lg h-[400px] relative">
         <div ref={mapRef} className="w-full h-full rounded-lg"></div>
         {popupContent && (
@@ -467,7 +381,6 @@ export default function AdminComplaintSolutions() {
               transition: "opacity 0.3s ease, transform 0.3s ease",
             }}
           >
-            {/* Kapat Butonu */}
             <button
               onClick={() => setPopupContent(null)}
               className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow hover:bg-red-600"
@@ -475,19 +388,13 @@ export default function AdminComplaintSolutions() {
             >
               ×
             </button>
-
-            {/* Fotoğraf */}
             <img
               src={popupContent.fotoUrl || "https://via.placeholder.com/240x130?text=Görsel+Yok"}
               alt={popupContent.title}
               className="w-full h-32 object-cover rounded mb-2"
             />
-
-            {/* Başlık ve Açıklama */}
             <h3 className="font-semibold text-base mb-1">{popupContent.title}</h3>
             <p className="text-sm text-gray-600 mb-1">{popupContent.desc}</p>
-
-            {/* Tür ve Durum */}
             <p className="text-xs text-gray-500 mb-1">
               Tür: {popupContent.sikayetTuruAdi || "Bilinmiyor"}
             </p>
@@ -498,35 +405,27 @@ export default function AdminComplaintSolutions() {
                   popupContent.status === "Cozuldu"
                     ? "text-green-600"
                     : popupContent.status === "Reddedildi"
-                      ? "text-red-500"
-                      : "text-blue-600"
+                    ? "text-red-500"
+                    : "text-blue-600"
                 }
               >
                 {popupContent.status}
               </span>
             </p>
-
-            {/* Puan ve Doğrulanma */}
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">
-                Puan: <StarRating rating={popupContent.combinedScore} />
-              </div>
-              <p
-                className="text-sm font-medium text-green-600 text-center bg-green-50 py-1 px-3 rounded-full border border-green-200 shadow-inner"
-                style={{ display: "inline-block" }}
-              >
-                Doğrulanma: {popupContent.dogrulanmaSayisi || 0}
-              </p>
-            </div>
+            <p
+              className="text-sm font-medium text-green-600 text-center bg-green-50 py-1 px-3 rounded-full border border-green-200 shadow-inner"
+              style={{ display: "inline-block", marginTop: "6px" }}
+            >
+              Doğrulanma: {popupContent.dogrulanmaSayisi || 0}
+            </p>
           </div>
         )}
       </div>
 
-      {/* DataTable */}
       <div className="bg-white p-4 rounded-lg shadow-lg">
         <DataTable
           columns={columns}
-          data={filteredComplaints.sort((a, b) => b.combinedScore - a.combinedScore)}
+          data={complaints}
           pagination
           paginationPerPage={10}
           highlightOnHover
@@ -535,7 +434,6 @@ export default function AdminComplaintSolutions() {
         />
       </div>
 
-      {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -543,33 +441,21 @@ export default function AdminComplaintSolutions() {
             <input
               type="text"
               value={editingComplaint?.title || ""}
-              onChange={(e) => setEditingComplaint({ ...editingComplaint, title: e.target.value })}
+              onChange={(e) =>
+                setEditingComplaint({ ...editingComplaint, title: e.target.value })
+              }
               placeholder="Başlık"
               className="border p-2 rounded-lg w-full mb-3"
             />
             <textarea
               value={editingComplaint?.desc || ""}
-              onChange={(e) => setEditingComplaint({ ...editingComplaint, desc: e.target.value })}
+              onChange={(e) =>
+                setEditingComplaint({ ...editingComplaint, desc: e.target.value })
+              }
               placeholder="Açıklama"
               className="border p-2 rounded-lg w-full mb-3"
               rows={4}
             />
-
-            {/* Complaint Type Selection */}
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Şikayet Türü</label>
-              <select
-                value={editingComplaint?.type || ""}
-                onChange={(e) => setEditingComplaint({ ...editingComplaint, type: e.target.value })}
-                className="border p-2 rounded-lg w-full"
-              >
-                <option value="">Tür Seçiniz</option>
-                {complaintTypes.map((type) => (
-                  <option key={type.id} value={type.id}>{type.ad}</option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setShowEditModal(false)}
