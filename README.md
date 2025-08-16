@@ -1,13 +1,65 @@
-# React + Vite
+# Şehir Asistanım - Dijital Belediye Talep ve Şikayet Platformu
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Geliştirme Ekibi
+- Elif Eryıldırım  
+- Umut Güven Uslu  
+- Fatma Buse Özmen  
 
-Currently, two official plugins are available:
+## Proje Tanımı
+Vatandaş-belediye etkileşimini dijitalleştiren harita tabanlı şikayet ve talep platformu. Geleneksel bildirim kanallarının aksine:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Konumsal veriye dayalı
+- Şeffaf ve takip edilebilir
+- Çok katmanlı şikayet yönetimi
 
-## Expanding the ESLint configuration
+## Hedefler
+### Kısa Vadeli
+- Harita tabanlı bildirim sistemi
+- Dijital sorun takibi
+- SMS/E-posta bildirimleri
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# Front
+### Uzun Vadeli
+- STK ve kriz yönetim entegrasyonu
+- Veri analitiği ile aksiyon planlama
+
+## Teknik Altyapı
+- **Harita Servisi**: OpenLayers, GeoJSON  
+- **Frontend**: React  
+- **Backend**: ASP.NET Core WEB API  
+- **Veritabanı**: PostgreSQL + PostGIS  
+- **Güvenlik**: JWT token  
+
+## Kullanıcı Profilleri
+- Vatandaşlar  
+- Belediye Birimleri  
+- Birim Amiri  
+
+## Katma Değerler
+- Operasyonel verimlilik  
+- Vatandaş katılımında artış  
+- Zaman ve maliyet tasarrufu  
+
+## Yenilikçi Yönler
+- Harita üzerinden direkt bildirim  
+- Topluluk oylaması ile önceliklendirme  
+- Çok katmanlı şikayet yönetimi  
+
+## Gelecek Planları
+- Mobil uygulama dönüşümü  
+- Veri analiz raporları  
+- AFAD ve STK entegrasyonu  
+
+
+
+## Ekran Görüntüleri
+#### Giriş Ekranı
+![Uygulama Giriş Ekranı](images/login.png)
+#### Kayıt Ekranı
+![Uygulama Kayıt Ekranı](images/register.png)
+#### Ana Sayfa
+![Uygulama Ana Sayfa](images/mainpage.png)
+#### Şikayet Görüntüsü
+![Uygulama Şikayet Görüntüsü](images/sikayet.png)
+#### Mobil Görüntüleri
+![Uygulama Mobil Görüntüleri](images/mobile1.png)
+![Uygulama Mobil Görüntüleri](images/mobile2.png)
