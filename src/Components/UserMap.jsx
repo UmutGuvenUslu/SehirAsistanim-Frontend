@@ -575,13 +575,13 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
       const fileName = `complaints/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("sehirasistanimdata")
+        .from("storage")
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from("sehirasistanimdata")
+        .from("storage")
         .getPublicUrl(fileName);
 
       const token = localStorage.getItem("token");
