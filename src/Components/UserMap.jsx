@@ -572,7 +572,7 @@ const UserMap = ({ selectedCoordinate, onCoordinateSelect }) => {
     try {
       const file = data.photos[0];
       const fileExt = file.name.split(".").pop();
-      const fileName = `complaints/${Date.now()}.${fileExt}`;
+      const fileName = `public/complaints/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("storage")
