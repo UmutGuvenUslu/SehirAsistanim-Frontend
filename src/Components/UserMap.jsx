@@ -22,8 +22,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-const supabaseUrl = "https://czpofsdqzrqrhfhalfbw.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cG9mc2RxenJxcmhmaGFsZmJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mzc2MjEsImV4cCI6MjA2ODQxMzYyMX0.PQNmMJZKhYF2NR1Zk1ILhxbHHw7B85jtC65ekFcjxEc";
+const supabaseUrl = "https://arnkottoxfmcbepsjjpj.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFybmtvdHRveGZtY2JlcHNqanBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NjM5NjcsImV4cCI6MjA3NzMzOTk2N30.gqiNIoqFNDAhCtJODZyZs-UgAVCOrXrjlxuhrPy6uxY";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Zod validation schema
